@@ -8,8 +8,9 @@ dist
 dist-ssr
 *.local
 
-# capacitor native projects (generated)
-android
+# capacitor native projects
+# android 프로젝트는 APK CI 빌드를 위해 저장소에 포함합니다.
+# (android/.gitignore 가 build/, .gradle, local.properties 등은 제외)
 ios
 
 # env
