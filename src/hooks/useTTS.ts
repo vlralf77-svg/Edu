@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useGameStore } from '@/store/useGameStore';
 
 /**
- * Web Speech API (speechSynthesis) 래퍼.
- * 영단어 발음 재생에 사용. 영어 보이스를 우선 선택한다.
+ * TTS(발음) 래퍼.
+ * - 네이티브(Android/iOS): @capacitor-community/text-to-speech 플러그인 사용
+ *   (안드로이드 WebView의 Web Speech API는 동작하지 않는 경우가 많아 네이티브 엔진 사용)
+ * - 웹: Web Speech API(speechSynthesis) 사용
  */
 export function useTTS() {
   const ttsEnabled = useGameStore((s) => s.settings.ttsEnabled);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
-  const supported =
+  const isNative = Capacitor.isNativePlatform();
+  const webSupported =
     typeof window !== 'undefined' && 'speechSynthesis' in window;
+  // 네이티브에서는 플러그인으로 항상 지원
+  const supported = isNative || webSupported;
 
-  // 영어 보이스 캐싱 (비동기 로드 대응)
+  // 웹: 영어 보이스 캐싱 (비동기 로드 대응)
   useEffect(() => {
-    if (!supported) return;
+    if (isNative || !webSupported) return;
 
     const pickVoice = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -29,25 +35,60 @@ export function useTTS() {
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
     };
-  }, [supported]);
+  }, [isNative, webSupported]);
 
   const speak = useCallback(
-    (text: string) => {
-      if (!supported || !ttsEnabled || !text) return;
-      window.speechSynthesis.cancel(); // 진행 중인 발음 중단
+    async (text: string) => {
+      if (!ttsEnabled || !text) return;
+
+      if (isNative) {
+        // 네이티브 TTS 엔진 사용
+        try {
+          const { TextToSpeech } = await import(
+            '@capacitor-community/text-to-speech'
+          );
+          await TextToSpeech.stop(); // 진행 중 발음 중단
+          await TextToSpeech.speak({
+            text,
+            lang: 'en-US',
+            rate: 0.9, // 아이들이 따라하기 쉽게 약간 느리게
+            pitch: 1.1,
+            volume: 1.0,
+            category: 'ambient',
+          });
+        } catch (e) {
+          console.warn('[tts] native speak failed', e);
+        }
+        return;
+      }
+
+      // 웹: Web Speech API
+      if (!webSupported) return;
+      window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'en-US';
-      utter.rate = 0.85; // 아이들이 따라하기 쉽게 천천히
+      utter.rate = 0.85;
       utter.pitch = 1.1;
       if (voiceRef.current) utter.voice = voiceRef.current;
       window.speechSynthesis.speak(utter);
     },
-    [supported, ttsEnabled],
+    [ttsEnabled, isNative, webSupported],
   );
 
-  const stop = useCallback(() => {
-    if (supported) window.speechSynthesis.cancel();
-  }, [supported]);
+  const stop = useCallback(async () => {
+    if (isNative) {
+      try {
+        const { TextToSpeech } = await import(
+          '@capacitor-community/text-to-speech'
+        );
+        await TextToSpeech.stop();
+      } catch {
+        /* noop */
+      }
+      return;
+    }
+    if (webSupported) window.speechSynthesis.cancel();
+  }, [isNative, webSupported]);
 
   return { speak, stop, supported };
 }
