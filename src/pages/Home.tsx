@@ -85,6 +85,21 @@ export default function Home() {
         </Stack>
       </Stack>
 
+      {/* 개발·QA용 테스트 페이지 진입 (작게 노출) */}
+      <Typography
+        onClick={() => navigate('/test')}
+        sx={{
+          textAlign: 'center',
+          fontSize: '0.72rem',
+          color: 'text.secondary',
+          opacity: 0.6,
+          py: 0.5,
+          cursor: 'pointer',
+        }}
+      >
+        🧪 테스트 페이지
+      </Typography>
+
       {/* 홈 화면 하단 배너 광고 */}
       <AdBanner />
     </Box>

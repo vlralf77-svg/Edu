@@ -7,6 +7,7 @@ import WordGame from './pages/WordGame';
 import ShapeGame from './pages/ShapeGame';
 import Result from './pages/Result';
 import Settings from './pages/Settings';
+import TestPage from './pages/TestPage';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/shape-game" element={<ShapeGame />} />
         <Route path="/result" element={<Result />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/test" element={<TestPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Box>
