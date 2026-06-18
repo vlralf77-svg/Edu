@@ -4,16 +4,17 @@ import { useTTS } from '@/hooks/useTTS';
 
 interface Props {
   text: string;
+  lang?: string; // 'en-US' | 'ko-KR' 등
   size?: number;
 }
 
-/** 스피커 아이콘 — 터치 시 영단어 TTS 발음 */
-export default function TTSButton({ text, size = 40 }: Props) {
+/** 스피커 아이콘 — 터치 시 발음 재생 (언어 지정 가능) */
+export default function TTSButton({ text, lang = 'en-US', size = 40 }: Props) {
   const { speak } = useTTS();
   return (
     <IconButton
       aria-label={`${text} 발음 듣기`}
-      onClick={() => speak(text)}
+      onClick={() => speak(text, lang)}
       sx={{
         bgcolor: 'secondary.main',
         color: '#fff',

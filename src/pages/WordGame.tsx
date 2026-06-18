@@ -65,6 +65,7 @@ export default function WordGame() {
   const [correctCount, setCorrectCount] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [popping, setPopping] = useState(false);
+  const [reveal, setReveal] = useState(false); // 정답 시 한글 전환
   const [timeLeft, setTimeLeft] = useState(HARD_TIME);
   const timerRef = useRef<number | null>(null);
 
@@ -83,6 +84,7 @@ export default function WordGame() {
     } else {
       setIndex((i) => i + 1);
       setPicked(null);
+      setReveal(false);
       setTimeLeft(HARD_TIME);
     }
   };
@@ -97,7 +99,9 @@ export default function WordGame() {
 
     if (choice === answer) {
       play('correct');
-      speak(answer); // 정답 시 자동 발음
+      setReveal(true); // 카드를 한글로 전환
+      // 정답 시 한국어 뜻을 읽어줌 (효과음과 겹치지 않게 약간 지연)
+      window.setTimeout(() => speak(current.item.ko, 'ko-KR'), 350);
       setPopping(true);
       setCorrectCount((c) => c + 1);
       addStar(1);
@@ -107,10 +111,14 @@ export default function WordGame() {
       play('wrong');
     }
 
-    window.setTimeout(() => {
-      setPopping(false);
-      goNext.current();
-    }, 1300);
+    // 정답이면 한글 발음을 들을 시간을 더 준다
+    window.setTimeout(
+      () => {
+        setPopping(false);
+        goNext.current();
+      },
+      choice === answer ? 1900 : 1300,
+    );
   };
 
   // 어려움 모드 타이머
@@ -164,7 +172,7 @@ export default function WordGame() {
       )}
 
       <Stack alignItems="center" justifyContent="center" sx={{ flex: 1, gap: 4 }}>
-        <WordCard item={current.item} popping={popping} />
+        <WordCard item={current.item} popping={popping} reveal={reveal} />
 
         <Stack spacing={1.5} sx={{ width: '100%', maxWidth: 360 }}>
           {current.choices.map((choice) => (

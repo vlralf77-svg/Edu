@@ -38,8 +38,9 @@ export function useTTS() {
   }, [isNative, webSupported]);
 
   const speak = useCallback(
-    async (text: string) => {
+    async (text: string, lang: string = 'en-US') => {
       if (!ttsEnabled || !text) return;
+      const isKo = lang.startsWith('ko');
 
       if (isNative) {
         // 네이티브 TTS 엔진 사용
@@ -50,7 +51,7 @@ export function useTTS() {
           await TextToSpeech.stop(); // 진행 중 발음 중단
           await TextToSpeech.speak({
             text,
-            lang: 'en-US',
+            lang,
             rate: 0.9, // 아이들이 따라하기 쉽게 약간 느리게
             pitch: 1.1,
             volume: 1.0,
@@ -66,10 +67,11 @@ export function useTTS() {
       if (!webSupported) return;
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'en-US';
+      utter.lang = lang;
       utter.rate = 0.85;
       utter.pitch = 1.1;
-      if (voiceRef.current) utter.voice = voiceRef.current;
+      // 영어일 때만 캐싱한 영어 보이스를 지정 (한국어는 기본 보이스 사용)
+      if (!isKo && voiceRef.current) utter.voice = voiceRef.current;
       window.speechSynthesis.speak(utter);
     },
     [ttsEnabled, isNative, webSupported],
