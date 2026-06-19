@@ -20,6 +20,7 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import RecordVoiceOverRoundedIcon from '@mui/icons-material/RecordVoiceOverRounded';
 import CardGiftcardRoundedIcon from '@mui/icons-material/CardGiftcardRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import { useNavigate } from 'react-router-dom';
 
 import StarBadge from '@/components/common/StarBadge';
@@ -35,6 +36,11 @@ export default function Settings() {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
   const addStar = useGameStore((s) => s.addStar);
+  const childName = useGameStore((s) => s.childName);
+  const setChildName = useGameStore((s) => s.setChildName);
+
+  // 아이 이름 입력
+  const [nameInput, setNameInput] = useState(childName);
 
   // 보호자 인증 게이트
   const [gateOpen, setGateOpen] = useState(false);
@@ -105,6 +111,37 @@ export default function Settings() {
               checked={settings.ttsEnabled}
               onChange={(e) => updateSettings({ ttsEnabled: e.target.checked })}
             />
+          </Stack>
+        </Paper>
+
+        {/* 아이 이름 (이름 쓰기 연습에 사용) */}
+        <Paper sx={{ p: 2.5 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
+            <BadgeRoundedIcon color="primary" />
+            <Typography sx={{ fontWeight: 800 }}>아이 이름</Typography>
+          </Stack>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem', mb: 1.5 }}>
+            저장하면 한글 배우기 → 이름 탭에서 이름을 따라 쓸 수 있어요. (최대 10자)
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              fullWidth
+              size="small"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="예: 김민준"
+              inputProps={{ maxLength: 10 }}
+            />
+            <Button
+              variant="contained"
+              onClick={() => {
+                setChildName(nameInput);
+                setToast('이름을 저장했어요!');
+              }}
+              disabled={!nameInput.trim()}
+            >
+              저장
+            </Button>
           </Stack>
         </Paper>
 

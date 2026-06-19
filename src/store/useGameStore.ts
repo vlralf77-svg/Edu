@@ -16,6 +16,9 @@ interface GameStore {
   lastPlayDate: string; // "YYYY-MM-DD"
   wordProgress: Record<string, boolean>; // 맞춘 단어 id 기록
 
+  // 아이 정보 (부모가 입력)
+  childName: string;
+
   // 설정
   settings: Settings;
 
@@ -27,6 +30,7 @@ interface GameStore {
   checkAttendance: () => void; // 출석/연속 출석 갱신
   resetDaily: () => void;
   updateSettings: (partial: Partial<Settings>) => void;
+  setChildName: (name: string) => void;
 }
 
 const STARS_PER_HINT = 5;
@@ -54,6 +58,7 @@ export const useGameStore = create<GameStore>()(
       streak: 0,
       lastPlayDate: '',
       wordProgress: {},
+      childName: '',
       settings: {
         soundEnabled: true,
         ttsEnabled: true,
@@ -105,6 +110,8 @@ export const useGameStore = create<GameStore>()(
 
       updateSettings: (partial) =>
         set((s) => ({ settings: { ...s.settings, ...partial } })),
+
+      setChildName: (name) => set({ childName: name.trim().slice(0, 10) }),
     }),
     {
       name: 'tinylearn-store',
@@ -116,6 +123,7 @@ export const useGameStore = create<GameStore>()(
         streak: s.streak,
         lastPlayDate: s.lastPlayDate,
         wordProgress: s.wordProgress,
+        childName: s.childName,
         settings: s.settings,
       }),
     },

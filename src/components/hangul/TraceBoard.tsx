@@ -86,7 +86,7 @@ const TraceBoard = forwardRef<TraceBoardHandle, Props>(function TraceBoard(
         touchAction: 'none',
       }}
     >
-      {/* 흐린 가이드 글자 */}
+      {/* 흐린 가이드 글자 (글자 수에 따라 크기 자동 조정) */}
       <Box
         aria-hidden
         sx={{
@@ -95,11 +95,12 @@ const TraceBoard = forwardRef<TraceBoardHandle, Props>(function TraceBoard(
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: size * 0.72,
+          fontSize: size * Math.min(0.72, 1 / (char.length + 0.4)),
           fontWeight: 800,
           color: 'rgba(127,119,221,0.18)',
           userSelect: 'none',
           lineHeight: 1,
+          px: 1,
         }}
       >
         {char}
