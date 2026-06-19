@@ -14,6 +14,8 @@ import { useGameStore, type Difficulty } from '@/store/useGameStore';
 const QUESTION_COUNT = 10;
 const HARD_TIME = 8; // 어려움 모드 제한 시간(초)
 
+const delay = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+
 const shuffle = <T,>(arr: T[]): T[] => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -100,25 +102,30 @@ export default function WordGame() {
     if (choice === answer) {
       play('correct');
       setReveal(true); // 카드를 한글로 전환
-      // 정답 시 한국어 뜻을 읽어줌 (효과음과 겹치지 않게 약간 지연)
-      window.setTimeout(() => speak(current.item.ko, 'ko-KR'), 350);
       setPopping(true);
       setCorrectCount((c) => c + 1);
       addStar(1);
       addCorrect(1);
       markWord(current.item.id);
-    } else {
-      play('wrong');
-    }
 
-    // 정답이면 한글 발음을 들을 시간을 더 준다
-    window.setTimeout(
-      () => {
+      // 영어를 먼저 말한 뒤 한국어 뜻을 이어서 말해주고, 끝나면 다음 문제로.
+      const koText = current.item.ko;
+      void (async () => {
+        await delay(300); // 정답 효과음과 겹치지 않게
+        await speak(answer, 'en-US'); // 1) 영어 발음
+        await delay(250);
+        await speak(koText, 'ko-KR'); // 2) 한국어 뜻
+        await delay(500);
         setPopping(false);
         goNext.current();
-      },
-      choice === answer ? 1900 : 1300,
-    );
+      })();
+    } else {
+      play('wrong');
+      window.setTimeout(() => {
+        setPopping(false);
+        goNext.current();
+      }, 1300);
+    }
   };
 
   // 어려움 모드 타이머

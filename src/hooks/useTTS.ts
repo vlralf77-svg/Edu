@@ -37,13 +37,14 @@ export function useTTS() {
     };
   }, [isNative, webSupported]);
 
+  // 발음이 끝날 때까지 기다리는 Promise를 반환한다 (영어→한국어 순차 재생용).
   const speak = useCallback(
-    async (text: string, lang: string = 'en-US') => {
+    async (text: string, lang: string = 'en-US'): Promise<void> => {
       if (!ttsEnabled || !text) return;
       const isKo = lang.startsWith('ko');
 
       if (isNative) {
-        // 네이티브 TTS 엔진 사용
+        // 네이티브 TTS 엔진 사용 (speak는 발음 완료 시 resolve)
         try {
           const { TextToSpeech } = await import(
             '@capacitor-community/text-to-speech'
@@ -65,14 +66,18 @@ export function useTTS() {
 
       // 웹: Web Speech API
       if (!webSupported) return;
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = lang;
-      utter.rate = 0.85;
-      utter.pitch = 1.1;
-      // 영어일 때만 캐싱한 영어 보이스를 지정 (한국어는 기본 보이스 사용)
-      if (!isKo && voiceRef.current) utter.voice = voiceRef.current;
-      window.speechSynthesis.speak(utter);
+      await new Promise<void>((resolve) => {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = lang;
+        utter.rate = 0.85;
+        utter.pitch = 1.1;
+        // 영어일 때만 캐싱한 영어 보이스를 지정 (한국어는 기본 보이스 사용)
+        if (!isKo && voiceRef.current) utter.voice = voiceRef.current;
+        utter.onend = () => resolve();
+        utter.onerror = () => resolve();
+        window.speechSynthesis.speak(utter);
+      });
     },
     [ttsEnabled, isNative, webSupported],
   );
