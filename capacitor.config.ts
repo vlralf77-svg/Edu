@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.tinylearn.app',
-  appName: 'TinyLearn',
+  appName: '티니런',
   webDir: 'dist',
   backgroundColor: '#FFF8E7',
   plugins: {

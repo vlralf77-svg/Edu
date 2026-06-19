@@ -54,7 +54,7 @@ export default function Home() {
       >
         <Box className="tl-float">
           <Typography variant="h2" sx={{ color: 'primary.main', fontSize: '3rem' }}>
-            TinyLearn
+            티니런
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontWeight: 700 }}>
             그림으로 배우는 영어 · 색깔 놀이
