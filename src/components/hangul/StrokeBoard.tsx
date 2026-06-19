@@ -196,7 +196,7 @@ const StrokeBoard = forwardRef<StrokeBoardHandle, Props>(function StrokeBoard(
           justifyContent: 'center',
           fontSize: size * Math.min(0.72, 1 / ((char?.length || 1) + 0.4)),
           fontWeight: 800,
-          color: 'rgba(127,119,221,0.14)',
+          color: 'rgba(127,119,221,0.30)',
           userSelect: 'none',
           lineHeight: 1,
           px: 1,
@@ -244,29 +244,11 @@ const StrokeBoard = forwardRef<StrokeBoardHandle, Props>(function StrokeBoard(
             />
           )}
 
-          {/* 화살표(획 방향) */}
+          {/* 화살표(획 방향) — 번호 대신 방향만 표시 */}
           {strokes.map((s, idx) => {
             const pts = arrow(s);
-            return pts ? <polygon key={`a${idx}`} points={pts} fill="#1D9E75" opacity={0.7} /> : null;
+            return pts ? <polygon key={`a${idx}`} points={pts} fill="#1D9E75" opacity={0.6} /> : null;
           })}
-
-          {/* 획순 번호 */}
-          {strokes.map((s, idx) => (
-            <g key={`n${idx}`}>
-              <circle cx={s[0][0]} cy={s[0][1]} r={7} fill="#FFC53D" />
-              <text
-                x={s[0][0]}
-                y={s[0][1]}
-                fontSize={9}
-                fontWeight={800}
-                fill="#7A5800"
-                textAnchor="middle"
-                dominantBaseline="central"
-              >
-                {idx + 1}
-              </text>
-            </g>
-          ))}
         </svg>
       )}
 
