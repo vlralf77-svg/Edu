@@ -82,6 +82,14 @@ export default function Home() {
           >
             색·도형 놀이
           </BigButton>
+          <BigButton
+            color="primary"
+            startIcon={<span style={{ fontSize: 28 }}>✏️</span>}
+            onClick={() => navigate('/hangul')}
+            sx={{ bgcolor: '#E8743B', '&:hover': { bgcolor: '#CF5F2A' } }}
+          >
+            한글 배우기
+          </BigButton>
         </Stack>
       </Stack>
 

@@ -202,6 +202,9 @@ export default function TestPage() {
             <Button variant="contained" color="secondary" onClick={() => navigate('/shape-game?type=shape')}>
               도형 게임
             </Button>
+            <Button variant="contained" onClick={() => navigate('/hangul')}>
+              한글 배우기
+            </Button>
             <Button variant="outlined" onClick={() => navigate('/settings')}>설정</Button>
             <Button
               variant="outlined"

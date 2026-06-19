@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import ModeSelect from './pages/ModeSelect';
 import WordGame from './pages/WordGame';
 import ShapeGame from './pages/ShapeGame';
+import HangulGame from './pages/HangulGame';
 import Result from './pages/Result';
 import Settings from './pages/Settings';
 import TestPage from './pages/TestPage';
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/mode" element={<ModeSelect />} />
         <Route path="/word-game" element={<WordGame />} />
         <Route path="/shape-game" element={<ShapeGame />} />
+        <Route path="/hangul" element={<HangulGame />} />
         <Route path="/result" element={<Result />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/test" element={<TestPage />} />
