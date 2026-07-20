@@ -80,10 +80,11 @@ const bgGreen = `<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
 </linearGradient></defs>`;
 
 const iconFull = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  ${bgGreen}<rect width="1024" height="1024" fill="url(#bg)"/>${art(0.94)}</svg>`;
+  ${bgGreen}<rect width="1024" height="1024" fill="url(#bg)"/>${art(1.34)}</svg>`;
 
+// 적응형 전경은 마스크가 16.7% inset 하므로 좀 더 크게 그린다
 const iconForeground = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  ${art(0.82)}</svg>`;
+  ${art(1.15)}</svg>`;
 
 const iconBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   ${bgGreen}<rect width="1024" height="1024" fill="url(#bg)"/></svg>`;
@@ -93,7 +94,7 @@ const splash = (g1, g2) => `<svg xmlns="http://www.w3.org/2000/svg" width="2732"
     <stop offset="0" stop-color="${g1}"/><stop offset="1" stop-color="${g2}"/>
   </linearGradient></defs>
   <rect width="2732" height="2732" fill="url(#bg)"/>
-  <g transform="translate(1366 1366) scale(2.4) translate(-512 -512)">${art(1)}</g>
+  <g transform="translate(1366 1366) scale(2.4) translate(-512 -512)">${art(1.15)}</g>
 </svg>`;
 
 const out = async (svg, file, size) => {
