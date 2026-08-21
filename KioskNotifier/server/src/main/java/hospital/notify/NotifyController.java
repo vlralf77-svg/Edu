@@ -1,24 +1,54 @@
 package hospital.notify;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notify")
 public class NotifyController {
 
     private final JdbcTemplate jdbc;
+    private final ArrivalNotifier arrivalNotifier;
+
+    @Value("${notify.testFire.enabled:true}")
+    private boolean testFireEnabled;
 
     @Autowired
-    public NotifyController(JdbcTemplate jdbc) {
+    public NotifyController(JdbcTemplate jdbc, ArrivalNotifier arrivalNotifier) {
         this.jdbc = jdbc;
+        this.arrivalNotifier = arrivalNotifier;
+    }
+
+    /**
+     * 개발/검증용 알림 발사. 접수 API 수정 없이 곧바로 팝업을 띄워볼 수 있다.
+     * 실서비스 배포 전 application.yml 에서 notify.testFire.enabled=false 로 잠그거나
+     * 방화벽/역방향 프록시로 이 경로만 사내망에 제한할 것.
+     *
+     * curl -X POST http://<host>:8080/api/notify/test-fire \
+     *      -H "Content-Type: application/json" \
+     *      -d '{"roomCd":"R101","msgType":"ARRIVAL","patientNo":"12345678","patientNm":"홍길동"}'
+     */
+    @PostMapping("/test-fire")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> testFire(@RequestBody ArrivalNotifier.Event ev) {
+        if (!testFireEnabled) {
+            return ResponseEntity.status(403).body(Map.of("ok", false, "reason", "test-fire disabled"));
+        }
+        if (ev == null || ev.roomCd() == null || ev.roomCd().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "reason", "roomCd required"));
+        }
+        arrivalNotifier.publish(ev);
+        return ResponseEntity.ok(Map.of("ok", true, "roomCd", ev.roomCd()));
     }
 
     @GetMapping("/room")

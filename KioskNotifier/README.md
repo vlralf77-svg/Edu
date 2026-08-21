@@ -74,17 +74,47 @@ arrivalNotifier.publish(new ArrivalNotifier.Event(
 
 ## 5. 테스트
 
-서버 없이 팝업만 확인: 트레이 → **알림 미리보기**
+### 5-1. 서버 없이 팝업만 확인
 
-큐 직접 주입 (Oracle):
+트레이 → **알림 미리보기**
+
+### 5-2. curl 한 방으로 종단(end-to-end) 테스트 (권장)
+
+접수 API 로직을 아직 안 붙였어도, `/api/notify/test-fire` 로 알림을 직접
+쏴서 팝업까지 검증할 수 있음. 서버는 `NOTIFY_QUEUE` INSERT → WebSocket 푸시
+전 경로를 그대로 탄다.
+
+```bash
+curl -X POST http://notify.hospital.local:8080/api/notify/test-fire \
+  -H "Content-Type: application/json" \
+  -d '{
+    "roomCd":"R101",
+    "msgType":"ARRIVAL",
+    "patientNo":"12345678",
+    "patientNm":"홍길동",
+    "doctorNm":"김의사"
+  }'
+```
+
+- 소켓 모드: 즉시 팝업
+- 폴링 모드: 최대 `pollIntervalSeconds` (기본 2초) 내 팝업
+
+`msgType` 값에 따라 팝업 색상이 바뀜: `ARRIVAL`(초록), `CALL`(파랑), `CANCEL`(주황).
+
+> **운영 배포 전 잠금**: `application.yml` 에 `notify.testFire.enabled: false`
+> 를 넣으면 이 엔드포인트가 403 을 반환한다. 또는 리버스 프록시에서
+> `/api/notify/test-fire` 경로를 사내망 IP 로만 허용.
+
+### 5-3. DB 직접 주입 (폴링 검증)
+
+접수 이벤트 발행 없이 폴링 회수만 검증하고 싶을 때:
 
 ```sql
 INSERT INTO NOTIFY_QUEUE (EVENT_ID, ROOM_CD, MSG_TYPE, PATIENT_NO, PATIENT_NM, CREATED_AT)
 VALUES (SYS_GUID(), 'R101', 'ARRIVAL', '12345678', '홍길동', SYSTIMESTAMP);
 ```
 
-- 폴링 모드: 2초 내 팝업
-- 소켓 모드: (이벤트 발행 경유 시) 즉시 팝업
+폴링 모드 클라이언트는 2초 내 회수해서 팝업.
 
 ## 6. 설정 파일 (appsettings.json)
 
