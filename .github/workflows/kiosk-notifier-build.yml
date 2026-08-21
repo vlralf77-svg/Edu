@@ -1,0 +1,59 @@
+name: KioskNotifier - Build Windows exe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/program-development-exe-c9u9en
+    paths:
+      - 'KioskNotifier/client/**'
+      - '.github/workflows/kiosk-notifier-build.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: KioskNotifier/client
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore KioskNotifier.csproj
+
+      - name: Build (Debug)
+        run: dotnet build KioskNotifier.csproj -c Debug --no-restore -warnaserror
+
+      - name: Publish single-file self-contained exe
+        run: >
+          dotnet publish KioskNotifier.csproj
+          -c Release -r win-x64
+          /p:PublishSingleFile=true
+          /p:SelfContained=true
+          /p:IncludeNativeLibrariesForSelfExtract=true
+          /p:EnableCompressionInSingleFile=true
+          -o publish
+
+      - name: Copy install.bat next to exe
+        shell: pwsh
+        run: |
+          Copy-Item -Path ..\deploy\install.bat -Destination publish\install.bat
+
+      - name: List artifacts
+        shell: pwsh
+        run: Get-ChildItem publish | Format-Table Name, Length
+
+      - name: Upload artifact (KioskNotifier)
+        uses: actions/upload-artifact@v4
+        with:
+          name: KioskNotifier-win-x64
+          path: KioskNotifier/client/publish/
+          if-no-files-found: error
+          retention-days: 30
