@@ -9,6 +9,9 @@ on:
       - 'KioskNotifier/client/**'
       - '.github/workflows/kiosk-notifier-build.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -57,3 +60,26 @@ jobs:
           path: KioskNotifier/client/publish/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Zip publish output for release
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath KioskNotifier-win-x64.zip -Force
+
+      - name: Publish GitHub Release with exe
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "kiosk-notifier-run-${{ github.run_number }}"
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $title = "KioskNotifier build #${{ github.run_number }} ($sha)"
+          gh release create $tag `
+            publish/KioskNotifier.exe `
+            publish/appsettings.json `
+            ../deploy/install.bat `
+            KioskNotifier-win-x64.zip `
+            --repo "${{ github.repository }}" `
+            --title "$title" `
+            --notes "자동 빌드. install.bat 실행 시 %LOCALAPPDATA%\KioskNotifier 로 설치됩니다." `
+            --target "${{ github.sha }}"
