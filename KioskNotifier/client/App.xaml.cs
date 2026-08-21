@@ -25,14 +25,6 @@ public partial class App : Application
 
     private readonly List<ToastWindow> _toasts = new();
 
-    [STAThread]
-    public static void Main()
-    {
-        var app = new App();
-        app.InitializeComponent();
-        app.Run();
-    }
-
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
