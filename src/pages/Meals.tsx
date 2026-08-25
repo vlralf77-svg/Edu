@@ -212,10 +212,10 @@ function MealAddDialog({
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   });
   const [foodName, setFoodName] = useState('');
-  const [kcal, setKcal] = useState('0');
-  const [p, setP] = useState('0');
-  const [c, setC] = useState('0');
-  const [f, setF] = useState('0');
+  const [kcal, setKcal] = useState('');
+  const [p, setP] = useState('');
+  const [c, setC] = useState('');
+  const [f, setF] = useState('');
 
   const handleSelectFood = (name: string) => {
     setFoodName(name);
@@ -240,10 +240,10 @@ function MealAddDialog({
       fatG: Number(f) || 0,
     });
     setFoodName('');
-    setKcal('0');
-    setP('0');
-    setC('0');
-    setF('0');
+    setKcal('');
+    setP('');
+    setC('');
+    setF('');
   };
 
   return (
@@ -289,7 +289,9 @@ function MealAddDialog({
               type="number"
               value={kcal}
               onChange={(e) => setKcal(e.target.value)}
+              onFocus={(e) => e.target.select()}
               sx={{ flex: 1 }}
+              placeholder="0"
             />
             <TextField
               size="small"
@@ -297,7 +299,9 @@ function MealAddDialog({
               type="number"
               value={p}
               onChange={(e) => setP(e.target.value)}
+              onFocus={(e) => e.target.select()}
               sx={{ flex: 1 }}
+              placeholder="0"
             />
           </Stack>
           <Stack direction="row" spacing={1}>
@@ -307,7 +311,9 @@ function MealAddDialog({
               type="number"
               value={c}
               onChange={(e) => setC(e.target.value)}
+              onFocus={(e) => e.target.select()}
               sx={{ flex: 1 }}
+              placeholder="0"
             />
             <TextField
               size="small"
@@ -315,7 +321,9 @@ function MealAddDialog({
               type="number"
               value={f}
               onChange={(e) => setF(e.target.value)}
+              onFocus={(e) => e.target.select()}
               sx={{ flex: 1 }}
+              placeholder="0"
             />
           </Stack>
         </Stack>

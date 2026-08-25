@@ -74,6 +74,7 @@ export default function Profile() {
                     heightCm: e.target.value ? parseFloat(e.target.value) : undefined,
                   })
                 }
+                onFocus={(e) => e.target.select()}
               />
               <Stack direction="row" spacing={1}>
                 <Select
@@ -121,6 +122,7 @@ export default function Profile() {
                     defaultRestSec: Math.max(15, parseInt(e.target.value, 10) || 90),
                   })
                 }
+                onFocus={(e) => e.target.select()}
               />
             </Stack>
           </CardContent>
@@ -282,6 +284,7 @@ function BodyAddDialog({
             type="number"
             value={w}
             onChange={(e) => setW(e.target.value)}
+            onFocus={(e) => e.target.select()}
           />
           <TextField
             size="small"
@@ -289,6 +292,7 @@ function BodyAddDialog({
             type="number"
             value={bf}
             onChange={(e) => setBf(e.target.value)}
+            onFocus={(e) => e.target.select()}
           />
           <TextField
             size="small"
@@ -296,6 +300,7 @@ function BodyAddDialog({
             type="number"
             value={sm}
             onChange={(e) => setSm(e.target.value)}
+            onFocus={(e) => e.target.select()}
           />
         </Stack>
       </DialogContent>

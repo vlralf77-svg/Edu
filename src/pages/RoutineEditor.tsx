@@ -197,6 +197,7 @@ export default function RoutineEditor() {
                             targetSets: Math.max(1, parseInt(ev.target.value, 10) || 1),
                           })
                         }
+                        onFocus={(ev) => ev.target.select()}
                         sx={{ flex: 1 }}
                       />
                       <TextField
@@ -204,6 +205,7 @@ export default function RoutineEditor() {
                         label="목표 횟수"
                         value={e.targetReps}
                         onChange={(ev) => updateEx(e.exerciseId, { targetReps: ev.target.value })}
+                        onFocus={(ev) => ev.target.select()}
                         sx={{ flex: 1 }}
                         placeholder="8-12"
                       />
@@ -217,6 +219,7 @@ export default function RoutineEditor() {
                             restSeconds: Math.max(15, parseInt(ev.target.value, 10) || 90),
                           })
                         }
+                        onFocus={(ev) => ev.target.select()}
                         sx={{ flex: 1 }}
                       />
                     </Stack>

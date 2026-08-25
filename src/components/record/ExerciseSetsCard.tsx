@@ -52,12 +52,18 @@ export default function ExerciseSetsCard({
   );
   const pb1rm = useMemo(() => getPB1RM(block.exerciseId), [block.exerciseId, getPB1RM]);
 
-  // 새 세트 입력용 로컬 상태
+  // 새 세트 입력용 로컬 상태.
+  // 이전 값이 있으면 미리 채우되 onFocus 에서 자동 선택되므로 덮어쓰기 쉽다.
+  // 이전 값이 없으면 빈 상태로 두고 placeholder 로만 힌트를 준다.
   const lastSet = block.sets[block.sets.length - 1];
-  const initialWeight = lastSet?.weightKg ?? previous?.weightKg ?? 20;
-  const initialReps = lastSet?.reps ?? previous?.reps ?? 8;
-  const [weight, setWeight] = useState<string>(String(initialWeight));
-  const [reps, setReps] = useState<string>(String(initialReps));
+  const prefillWeight = lastSet?.weightKg ?? previous?.weightKg;
+  const prefillReps = lastSet?.reps ?? previous?.reps;
+  const [weight, setWeight] = useState<string>(
+    prefillWeight != null ? String(prefillWeight) : '',
+  );
+  const [reps, setReps] = useState<string>(
+    prefillReps != null ? String(prefillReps) : '',
+  );
   const [setType, setSetType] = useState<SetType>('NORMAL');
 
   const handleAdd = () => {
@@ -169,6 +175,7 @@ export default function ExerciseSetsCard({
             inputProps={{ inputMode: 'decimal', step: '0.5', min: 0 }}
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
+            onFocus={(e) => e.target.select()}
             sx={{ flex: 1 }}
             placeholder="kg"
           />
@@ -179,6 +186,7 @@ export default function ExerciseSetsCard({
             inputProps={{ inputMode: 'numeric', min: 1 }}
             value={reps}
             onChange={(e) => setReps(e.target.value)}
+            onFocus={(e) => e.target.select()}
             sx={{ width: 72 }}
             placeholder="reps"
           />
@@ -235,6 +243,7 @@ function SetRow({
         inputProps={{ inputMode: 'decimal', step: '0.5', min: 0 }}
         value={set.weightKg}
         onChange={(e) => onUpdate({ weightKg: parseFloat(e.target.value) || 0 })}
+        onFocus={(e) => e.target.select()}
         sx={{ flex: 1 }}
       />
       <Typography variant="body2" color="text.secondary">
@@ -247,6 +256,7 @@ function SetRow({
         inputProps={{ inputMode: 'numeric', min: 1 }}
         value={set.reps}
         onChange={(e) => onUpdate({ reps: parseInt(e.target.value, 10) || 1 })}
+        onFocus={(e) => e.target.select()}
         sx={{ width: 56 }}
       />
       {info && (
