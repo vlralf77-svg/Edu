@@ -16,6 +16,7 @@ export type EquipmentType =
   | 'MACHINE'
   | 'CABLE'
   | 'BODYWEIGHT'
+  | 'KETTLEBELL'
   | 'CARDIO';
 
 export type SetType = 'NORMAL' | 'WARMUP' | 'DROP' | 'FAILURE';
