@@ -11,6 +11,8 @@ import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded';
 import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
+import DoneAllRoundedIcon from '@mui/icons-material/DoneAllRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/layout/PageHeader';
@@ -25,6 +27,8 @@ export default function Home() {
   const sessions = useAppStore((s) => s.sessions);
   const routines = useAppStore((s) => s.routines);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
+  const endSession = useAppStore((s) => s.endSession);
+  const discardSession = useAppStore((s) => s.discardSession);
 
   // Zustand 셀렉터가 매번 새 객체를 반환하면 무한 리렌더가 나므로,
   // 원시 배열만 스토어에서 뽑고 파생 계산은 useMemo 로 처리.
@@ -95,8 +99,8 @@ export default function Home() {
         </Card>
 
         {/* 활성 세션 이어하기 / 새로 시작 */}
-        <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
-          {activeSessionId ? (
+        {activeSessionId ? (
+          <Stack spacing={1} sx={{ mt: 2 }}>
             <Button
               fullWidth
               size="large"
@@ -107,7 +111,37 @@ export default function Home() {
             >
               진행 중인 운동 이어하기
             </Button>
-          ) : (
+            <Stack direction="row" spacing={1}>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="secondary"
+                startIcon={<DoneAllRoundedIcon />}
+                onClick={() => {
+                  if (window.confirm('진행 중인 운동을 완료로 저장할까요?')) {
+                    endSession(activeSessionId);
+                  }
+                }}
+              >
+                종료
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="error"
+                startIcon={<CloseRoundedIcon />}
+                onClick={() => {
+                  if (window.confirm('진행 중인 세션을 삭제할까요? 기록은 남지 않아요.')) {
+                    discardSession(activeSessionId);
+                  }
+                }}
+              >
+                취소
+              </Button>
+            </Stack>
+          </Stack>
+        ) : (
+          <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
             <Button
               fullWidth
               size="large"
@@ -118,8 +152,8 @@ export default function Home() {
             >
               운동 시작하기
             </Button>
-          )}
-        </Stack>
+          </Stack>
+        )}
 
         {/* 최근 운동 요약 */}
         {lastSession && (

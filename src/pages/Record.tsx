@@ -26,6 +26,8 @@ export default function Record() {
   const routines = useAppStore((s) => s.routines);
   const sessions = useAppStore((s) => s.sessions);
   const startSession = useAppStore((s) => s.startSession);
+  const endSession = useAppStore((s) => s.endSession);
+  const discardSession = useAppStore((s) => s.discardSession);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
 
   // URL로 루틴 지정 시 바로 시작
@@ -47,20 +49,43 @@ export default function Record() {
         <Box sx={{ px: 2, mb: 2 }}>
           <Card sx={{ border: '1px solid rgba(255,107,53,0.4)' }}>
             <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="overline" color="primary.main">
-                    진행 중
-                  </Typography>
-                  <Typography fontWeight={700}>
-                    미완료 세션이 있어요
-                  </Typography>
-                </Box>
+              <Box>
+                <Typography variant="overline" color="primary.main">
+                  진행 중
+                </Typography>
+                <Typography fontWeight={700}>미완료 세션이 있어요</Typography>
+              </Box>
+              <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
                 <Button
+                  fullWidth
                   variant="contained"
                   onClick={() => nav(`/record/session/${activeSessionId}`)}
                 >
                   이어하기
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => {
+                    if (window.confirm('진행 중인 운동을 완료로 저장할까요?')) {
+                      endSession(activeSessionId);
+                    }
+                  }}
+                >
+                  종료
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    if (window.confirm('진행 중인 세션을 삭제할까요? 기록은 남지 않아요.')) {
+                      discardSession(activeSessionId);
+                    }
+                  }}
+                >
+                  취소
                 </Button>
               </Stack>
             </CardContent>
