@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/layout/PageHeader';
@@ -26,7 +26,6 @@ export default function Record() {
   const routines = useAppStore((s) => s.routines);
   const sessions = useAppStore((s) => s.sessions);
   const startSession = useAppStore((s) => s.startSession);
-  const deleteRoutine = useAppStore((s) => s.deleteRoutine);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
 
   // URL로 루틴 지정 시 바로 시작
@@ -145,14 +144,8 @@ export default function Record() {
                       )}
                     </Stack>
                   </Box>
-                  <IconButton
-                    onClick={() => {
-                      if (window.confirm(`"${r.name}" 루틴을 삭제할까요?`)) {
-                        deleteRoutine(r.id);
-                      }
-                    }}
-                  >
-                    <DeleteOutlineRoundedIcon />
+                  <IconButton onClick={() => nav(`/routines/${r.id}`)} aria-label="루틴 수정">
+                    <EditRoundedIcon />
                   </IconButton>
                   <IconButton
                     color="primary"
@@ -160,6 +153,7 @@ export default function Record() {
                       const id = startSession(r.id, r.name);
                       nav(`/record/session/${id}`);
                     }}
+                    aria-label="이 루틴으로 시작"
                   >
                     <PlayArrowRoundedIcon />
                   </IconButton>

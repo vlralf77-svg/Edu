@@ -48,6 +48,7 @@ interface AppState {
 
   // routine
   createRoutine: (r: Omit<Routine, 'id' | 'createdAt'>) => Routine;
+  updateRoutine: (id: string, patch: Partial<Omit<Routine, 'id' | 'createdAt'>>) => void;
   deleteRoutine: (id: string) => void;
   addExerciseToRoutine: (routineId: string, ex: RoutineExercise) => void;
   removeExerciseFromRoutine: (routineId: string, exerciseId: string) => void;
@@ -227,6 +228,11 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ routines: [routine, ...s.routines] }));
         return routine;
       },
+
+      updateRoutine: (id, patch) =>
+        set((s) => ({
+          routines: s.routines.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+        })),
 
       deleteRoutine: (id) =>
         set((s) => ({ routines: s.routines.filter((r) => r.id !== id) })),

@@ -16,6 +16,7 @@ export default function App() {
         <Route path="/record" element={<Record />} />
         <Route path="/record/session/:id" element={<SessionEditor />} />
         <Route path="/routines/new" element={<RoutineEditor />} />
+        <Route path="/routines/:id" element={<RoutineEditor />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/meals" element={<Meals />} />
         <Route path="/me" element={<Profile />} />

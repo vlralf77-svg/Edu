@@ -18,13 +18,16 @@ export default function BottomNav() {
   const nav = useNavigate();
   const { pathname } = useLocation();
 
-  // 서브 페이지도 상위 탭에 매칭
-  const topMatch = (p: string) => {
-    if (p === '/') return '/';
-    if (pathname.startsWith(p)) return p;
-    return null;
+  // 서브 페이지도 상위 탭에 매칭.
+  // - 홈('/') 은 정확히 일치해야 함
+  // - 나머지는 pathname.startsWith(tab.path)
+  // - /routines/... 는 루틴이 기록 탭에서 시작하므로 기록 탭으로 매핑
+  const matches = (tabPath: string) => {
+    if (tabPath === '/') return pathname === '/';
+    if (tabPath === '/record' && pathname.startsWith('/routines')) return true;
+    return pathname === tabPath || pathname.startsWith(tabPath + '/');
   };
-  const activePath = tabs.find((t) => topMatch(t.path))?.path ?? '/';
+  const activePath = tabs.find((t) => matches(t.path))?.path ?? '/';
 
   return (
     <Paper
