@@ -13,8 +13,11 @@ on:
         options:
           - debug
           - release
-  # v* 태그 푸시 시 자동 빌드
+  # 개발 브랜치 푸시 시 자동 빌드 (디버그 APK)
   push:
+    branches:
+      - "claude/**"
+      - main
     tags:
       - "v*"
 
@@ -76,7 +79,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tinylearn-apk
+          name: fitlog-apk
           path: android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 30

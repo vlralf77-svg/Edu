@@ -28,12 +28,6 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- AdMob 앱 ID (현재는 Google 테스트 ID). 프로덕션 출시 시 실제 ID로 교체하세요.
-             이 메타데이터가 없으면 Google Mobile Ads SDK가 시작 시 크래시됩니다. -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"
-        />
     </application>
 
     <!-- Permissions -->
