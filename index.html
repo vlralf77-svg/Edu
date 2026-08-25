@@ -8,9 +8,66 @@
     />
     <meta name="theme-color" content="#0F1621" />
     <title>FitLog — 헬스 운동 기록·분석</title>
+    <style>
+      /* 초기 부팅 상태 (React 마운트 전) */
+      body { background: #0F1621; color: #F1F5F9; font-family: system-ui, sans-serif; }
+      #boot-msg {
+        position: fixed; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: 24px; text-align: center; gap: 12px;
+      }
+      #boot-err {
+        position: fixed; left: 12px; right: 12px; top: 12px;
+        background: #F87171; color: #000;
+        padding: 12px; border-radius: 8px;
+        font-size: 12px; white-space: pre-wrap; word-break: break-word;
+        z-index: 9999; display: none; max-height: 80vh; overflow: auto;
+      }
+    </style>
   </head>
   <body>
+    <!-- React 마운트되면 사라짐 -->
+    <div id="boot-msg">
+      <div style="font-size: 20px; font-weight: 700;">FitLog</div>
+      <div style="font-size: 13px; opacity: 0.7;">로딩 중...</div>
+    </div>
+    <div id="boot-err"></div>
     <div id="root"></div>
+    <script>
+      (function () {
+        function show(kind, msg) {
+          var el = document.getElementById('boot-err');
+          if (!el) return;
+          el.style.display = 'block';
+          el.textContent = '[' + kind + '] ' + msg;
+        }
+        window.addEventListener('error', function (e) {
+          show('error', (e.message || 'error') + '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          show('reject', (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason));
+        });
+        // React 가 마운트하면 boot-msg 를 제거
+        var observer = new MutationObserver(function () {
+          var root = document.getElementById('root');
+          if (root && root.childElementCount > 0) {
+            var boot = document.getElementById('boot-msg');
+            if (boot) boot.remove();
+            observer.disconnect();
+          }
+        });
+        observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+        // 8초 뒤에도 마운트 안 됐으면 안내
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (root && root.childElementCount === 0) {
+            var b = document.getElementById('boot-msg');
+            if (b) b.innerHTML = '<div style="font-size:16px;font-weight:700;">앱이 로드되지 않았어요</div><div style="font-size:12px;opacity:0.7;">화면 상단에 오류 메시지가 있는지 확인해 주세요.</div>';
+          }
+        }, 8000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
