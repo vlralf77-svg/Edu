@@ -1,5 +1,6 @@
 :root {
   -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
 }
 
 html,
@@ -12,46 +13,44 @@ body,
 
 body {
   overscroll-behavior: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   touch-action: manipulation;
+  background: #0F1621;
+}
+
+/* 입력 필드는 텍스트 선택 허용 */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* 안전 영역 (노치/홈 인디케이터) 대응 */
 #root {
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
 
-/* 흔들림 애니메이션 (오답 피드백) */
-@keyframes tl-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-6px); }
-  80% { transform: translateX(6px); }
+/* 스크롤바 감추기 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
 }
 
-/* 팝 애니메이션 (정답 피드백) */
-@keyframes tl-pop {
+@keyframes fl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.fl-pulse { animation: fl-pulse 1.6s ease-in-out infinite; }
+
+@keyframes fl-pop {
   0% { transform: scale(1); }
-  50% { transform: scale(1.18); }
+  50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
-
-/* 둥실 떠오르는 애니메이션 */
-@keyframes tl-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* 컨페티 낙하 */
-@keyframes tl-fall {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-}
-
-.tl-shake { animation: tl-shake 0.4s ease; }
-.tl-pop { animation: tl-pop 0.4s ease; }
-.tl-float { animation: tl-float 3s ease-in-out infinite; }
+.fl-pop { animation: fl-pop 0.28s ease; }

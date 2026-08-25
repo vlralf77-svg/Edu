@@ -1,31 +1,34 @@
 import { createTheme } from '@mui/material/styles';
 
-// TinyLearn 테마 — Primary: #7F77DD 퍼플, Secondary: #1D9E75 틸
+// FitLog 다크 테마 — 헬스장 조명 환경 고려 (WBS 4.3 원칙)
 export const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#7F77DD',
-      light: '#A39DEA',
-      dark: '#5B53B8',
+      main: '#FF6B35', // 에너제틱 오렌지
+      light: '#FF8A5F',
+      dark: '#D14E1D',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#1D9E75',
-      light: '#4FBF98',
-      dark: '#137254',
-      contrastText: '#FFFFFF',
+      main: '#4ECDC4', // 시원한 틸
+      light: '#7FDDD6',
+      dark: '#2AA39A',
+      contrastText: '#0F1621',
     },
     background: {
-      default: '#FFF8E7', // 따뜻한 크림색 배경
-      paper: '#FFFFFF',
+      default: '#0F1621',
+      paper: '#1A2332',
     },
-    warning: {
-      main: '#FFC53D', // 별 색상
-    },
+    success: { main: '#4ADE80' },
+    warning: { main: '#FBBF24' },
+    error: { main: '#F87171' },
+    info: { main: '#60A5FA' },
     text: {
-      primary: '#3A3A52',
-      secondary: '#6E6E87',
+      primary: '#F1F5F9',
+      secondary: '#94A3B8',
     },
+    divider: 'rgba(255,255,255,0.08)',
   },
   typography: {
     fontFamily:
@@ -33,26 +36,40 @@ export const theme = createTheme({
     h1: { fontWeight: 800 },
     h2: { fontWeight: 800 },
     h3: { fontWeight: 700 },
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 700 },
+    h6: { fontWeight: 700 },
     button: { fontWeight: 700, textTransform: 'none' },
   },
   shape: {
-    borderRadius: 20,
+    borderRadius: 14,
   },
   components: {
     MuiButton: {
-      defaultProps: { disableElevation: false },
+      defaultProps: { disableElevation: true },
       styleOverrides: {
         root: {
-          borderRadius: 24,
-          paddingTop: 12,
-          paddingBottom: 12,
-          fontSize: '1.1rem',
+          borderRadius: 12,
+          paddingTop: 10,
+          paddingBottom: 10,
+          fontSize: '1rem',
+        },
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #FF6B35 0%, #FF8A5F 100%)',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        rounded: { borderRadius: 28 },
+        rounded: { borderRadius: 16 },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          border: '1px solid rgba(255,255,255,0.06)',
+        },
       },
     },
   },

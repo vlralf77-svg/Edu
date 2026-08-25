@@ -1,14 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.tinylearn.app',
-  appName: '티니런',
+  appId: 'com.fitlog.app',
+  appName: 'FitLog',
   webDir: 'dist',
-  backgroundColor: '#FFF8E7',
+  backgroundColor: '#0F1621',
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1500,
-      backgroundColor: '#7F77DD',
+      launchShowDuration: 1200,
+      backgroundColor: '#0F1621',
       showSpinner: false,
     },
   },

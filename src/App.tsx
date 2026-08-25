@@ -1,36 +1,26 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Box } from '@mui/material';
-
+import AppShell from './components/layout/AppShell';
 import Home from './pages/Home';
-import ModeSelect from './pages/ModeSelect';
-import WordGame from './pages/WordGame';
-import ShapeGame from './pages/ShapeGame';
-import HangulGame from './pages/HangulGame';
-import Result from './pages/Result';
-import Settings from './pages/Settings';
-import TestPage from './pages/TestPage';
+import Record from './pages/Record';
+import SessionEditor from './pages/SessionEditor';
+import Analytics from './pages/Analytics';
+import Meals from './pages/Meals';
+import Profile from './pages/Profile';
+import RoutineEditor from './pages/RoutineEditor';
 
 export default function App() {
   return (
-    <Box
-      sx={{
-        minHeight: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: 'background.default',
-      }}
-    >
-      <Routes>
+    <Routes>
+      <Route element={<AppShell />}>
         <Route path="/" element={<Home />} />
-        <Route path="/mode" element={<ModeSelect />} />
-        <Route path="/word-game" element={<WordGame />} />
-        <Route path="/shape-game" element={<ShapeGame />} />
-        <Route path="/hangul" element={<HangulGame />} />
-        <Route path="/result" element={<Result />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/test" element={<TestPage />} />
+        <Route path="/record" element={<Record />} />
+        <Route path="/record/session/:id" element={<SessionEditor />} />
+        <Route path="/routines/new" element={<RoutineEditor />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/meals" element={<Meals />} />
+        <Route path="/me" element={<Profile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Box>
+      </Route>
+    </Routes>
   );
 }

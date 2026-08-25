@@ -1,7 +1,7 @@
 {
-  "name": "tinylearn",
-  "version": "1.0.0",
-  "description": "TinyLearn — 유아·아동 대상 교육 게임 앱",
+  "name": "fitlog",
+  "version": "0.1.0",
+  "description": "FitLog — 헬스 운동 기록·분석·코칭 앱 (MVP)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,8 +13,6 @@
     "cap:ios": "cap open ios"
   },
   "dependencies": {
-    "@capacitor-community/admob": "^6.0.0",
-    "@capacitor-community/text-to-speech": "^5.1.0",
     "@capacitor/android": "^6.1.2",
     "@capacitor/app": "^6.0.1",
     "@capacitor/core": "^6.1.2",
@@ -24,7 +22,6 @@
     "@fontsource/baloo-2": "^5.1.0",
     "@mui/icons-material": "^6.1.6",
     "@mui/material": "^6.1.6",
-    "howler": "^2.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
@@ -33,7 +30,6 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.1.2",
-    "@types/howler": "^2.2.12",
     "@types/node": "^25.9.3",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
