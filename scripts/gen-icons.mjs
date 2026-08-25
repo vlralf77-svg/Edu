@@ -1,110 +1,116 @@
-// 티니런 앱 아이콘/스플래시 생성.
-// 참조 디자인: 초록 배경 + '가'(흰 블록)·'A'(노란 블록) 글자 블록 + 별 + 연필.
-// 글자는 폰트 의존 없이 벡터 획으로 그린다. sharp로 SVG → PNG.
+// 헬스맨 앱 아이콘/스플래시 생성.
+// 오렌지 그라디언트 배경 + 흰색 덤벨(barbell) 로고.
+// 안드로이드 adaptive icon: foreground(투명 + 덤벨)·background(오렌지) 분리 렌더.
+// 텍스트 없이 순수 벡터 마크만 사용 (Play Store 아이콘 정책 및 폰트 의존 회피).
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
 mkdirSync('assets', { recursive: true });
 
-const GREEN1 = '#36C880';
-const GREEN2 = '#1C9E63';
-const INK = '#2E2A4D';
-const BLOCK_W = '#FFFDF5';
-const BLOCK_Y = '#FFC53D';
+// 브랜드 팔레트 (앱 다크 테마와 통일)
+const ORANGE1 = '#FF6B35';
+const ORANGE2 = '#FF8A5F';
+const NAVY1 = '#0F1621';
+const NAVY2 = '#1A2332';
+const WHITE = '#FFFFFF';
 
-const star5 = '50,5 61,38 96,38 68,59 79,92 50,72 21,92 32,59 4,38 39,38';
-
-// 글자 블록: (cx,cy) 중심, rot 회전, fill 배경, 내부에 획(strokes) 그리기
-function block(cx, cy, rot, fill, strokes) {
-  const S = 290; // 블록 한 변
-  const h = S / 2;
-  const pad = 54;
-  const m = (v) => -h + pad + (v / 100) * (S - 2 * pad); // 0~100 → 블록 로컬좌표
-  const paths = strokes
-    .map(
-      (st) =>
-        `<path d="${st
-          .map((p, i) => `${i ? 'L' : 'M'} ${m(p[0]).toFixed(1)} ${m(p[1]).toFixed(1)}`)
-          .join(' ')}" fill="none" stroke="${INK}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>`,
-    )
-    .join('');
-  return `<g transform="translate(${cx} ${cy}) rotate(${rot})">
-    <rect x="${-h}" y="${-h}" width="${S}" height="${S}" rx="56" fill="${fill}"
-      stroke="rgba(0,0,0,0.06)" stroke-width="2"/>
-    ${paths}
+/**
+ * 덤벨(바벨) SVG 마크.
+ * 원점(0,0) 중심, 폭 ~600 x 높이 ~260 크기, 30° 회전 지원.
+ * fill 색상은 파라미터로.
+ * 구성: [원판 바깥][원판 안쪽]===[핸들]===[원판 안쪽][원판 바깥]
+ */
+function dumbbell({ color = WHITE, rotate = -22, scale = 1, cx = 0, cy = 0 } = {}) {
+  const s = scale;
+  const g = (x) => (x * s).toFixed(1);
+  // 좌표계 로컬 → 회전 적용은 transform 으로
+  return `
+  <g transform="translate(${cx} ${cy}) rotate(${rotate})">
+    <!-- 핸들 -->
+    <rect x="${g(-160)}" y="${g(-30)}" width="${g(320)}" height="${g(60)}" rx="${g(28)}" fill="${color}"/>
+    <!-- 좌측 원판 안쪽 -->
+    <rect x="${g(-235)}" y="${g(-80)}" width="${g(70)}" height="${g(160)}" rx="${g(20)}" fill="${color}"/>
+    <!-- 좌측 원판 바깥 -->
+    <rect x="${g(-315)}" y="${g(-115)}" width="${g(72)}" height="${g(230)}" rx="${g(22)}" fill="${color}"/>
+    <!-- 우측 원판 안쪽 -->
+    <rect x="${g(165)}" y="${g(-80)}" width="${g(70)}" height="${g(160)}" rx="${g(20)}" fill="${color}"/>
+    <!-- 우측 원판 바깥 -->
+    <rect x="${g(243)}" y="${g(-115)}" width="${g(72)}" height="${g(230)}" rx="${g(22)}" fill="${color}"/>
   </g>`;
 }
 
-// '가' = ㄱ + ㅏ
-const GA = [
-  [[14, 30], [50, 30], [42, 60]], // ㄱ
-  [[64, 14], [64, 88]], // ㅏ 세로
-  [[64, 50], [90, 50]], // ㅏ 가지
-];
-// 'A'
-const A = [
-  [[20, 88], [50, 14]],
-  [[50, 14], [80, 88]],
-  [[33, 58], [67, 58]],
-];
+// 오렌지 그라디언트 정의 (재사용)
+const orangeGrad = `
+  <defs>
+    <radialGradient id="og" cx="0.5" cy="0.4" r="0.75">
+      <stop offset="0" stop-color="${ORANGE2}"/>
+      <stop offset="1" stop-color="${ORANGE1}"/>
+    </radialGradient>
+    <radialGradient id="ng" cx="0.5" cy="0.42" r="0.7">
+      <stop offset="0" stop-color="${NAVY2}"/>
+      <stop offset="1" stop-color="${NAVY1}"/>
+    </radialGradient>
+    <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${WHITE}"/>
+      <stop offset="1" stop-color="#F0EDE8"/>
+    </linearGradient>
+  </defs>`;
 
-// 연필 (가로 기준 로컬좌표) — 회전·이동해서 배치
-function pencil(cx, cy, rot, scale = 1) {
-  return `<g transform="translate(${cx} ${cy}) rotate(${rot}) scale(${scale})">
-    <rect x="-30" y="-34" width="34" height="68" rx="12" fill="#F2A0B4"/>
-    <rect x="0" y="-34" width="250" height="68" rx="6" fill="#F4A93B"/>
-    <rect x="0" y="-34" width="250" height="20" rx="6" fill="#F7BC5E"/>
-    <rect x="250" y="-34" width="22" height="68" fill="#EDEDED"/>
-    <polygon points="272,-34 272,34 348,0" fill="#F3D6A6"/>
-    <polygon points="322,-14 322,14 348,0" fill="#3B3650"/>
-  </g>`;
-}
-
-// 메인 그림 (1024 캔버스 중심 좌표 기준) — scale 로 크기 조절
-function art(scale = 1) {
-  return `<g transform="translate(512 512) scale(${scale}) translate(-512 -512)">
-    <!-- 별 -->
-    <g transform="translate(232 232) scale(1.7)">
-      <polygon points="${star5}" fill="#FFE49B" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
-    </g>
-    <!-- 연필 -->
-    ${pencil(250, 720, -32, 1.0)}
-    <!-- 글자 블록 -->
-    ${block(430, 470, -8, BLOCK_W, GA)}
-    ${block(648, 560, 9, BLOCK_Y, A)}
-  </g>`;
-}
-
-const bgGreen = `<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-  <stop offset="0" stop-color="${GREEN1}"/><stop offset="1" stop-color="${GREEN2}"/>
-</linearGradient></defs>`;
-
-const iconFull = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  ${bgGreen}<rect width="1024" height="1024" fill="url(#bg)"/>${art(1.34)}</svg>`;
-
-// 적응형 전경은 마스크가 16.7% inset 하므로 좀 더 크게 그린다
-const iconForeground = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  ${art(1.15)}</svg>`;
-
-const iconBackground = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  ${bgGreen}<rect width="1024" height="1024" fill="url(#bg)"/></svg>`;
-
-const splash = (g1, g2) => `<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="${g1}"/><stop offset="1" stop-color="${g2}"/>
-  </linearGradient></defs>
-  <rect width="2732" height="2732" fill="url(#bg)"/>
-  <g transform="translate(1366 1366) scale(2.4) translate(-512 -512)">${art(1.15)}</g>
+// 1024x1024 오렌지 배경 + 중앙 덤벨 (레거시 아이콘 / icon-only)
+const iconSquareSvg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  ${orangeGrad}
+  <rect width="1024" height="1024" fill="url(#og)"/>
+  <g transform="translate(512 512)">
+    ${dumbbell({ color: 'url(#dg)', rotate: -22, scale: 1.05 })}
+  </g>
+  <!-- 살짝의 하이라이트 -->
+  <circle cx="330" cy="300" r="180" fill="white" opacity="0.08"/>
 </svg>`;
 
-const out = async (svg, file, size) => {
-  await sharp(Buffer.from(svg)).resize(size, size).png().toFile(`assets/${file}`);
-  console.log('wrote assets/' + file);
-};
+// Adaptive icon foreground: 투명 배경 + 중앙 덤벨 (안전 영역 안에)
+// 안드로이드 adaptive icon safe zone: 중심 66% (=~672px in 1024)
+const iconForegroundSvg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  ${orangeGrad}
+  <g transform="translate(512 512)">
+    ${dumbbell({ color: 'url(#dg)', rotate: -22, scale: 0.95 })}
+  </g>
+</svg>`;
 
-await out(iconFull, 'icon-only.png', 1024);
-await out(iconForeground, 'icon-foreground.png', 1024);
-await out(iconBackground, 'icon-background.png', 1024);
-await out(splash(GREEN1, GREEN2), 'splash.png', 2732);
-await out(splash('#1F3A2E', '#142620'), 'splash-dark.png', 2732);
-console.log('done');
+// Adaptive icon background: 오렌지 그라디언트 풀필 (원형/사각 마스크에 대응)
+const iconBackgroundSvg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  ${orangeGrad}
+  <rect width="1024" height="1024" fill="url(#og)"/>
+</svg>`;
+
+// 스플래시: 다크 네이비 배경 + 중앙 오렌지 덤벨
+// 2732x2732 (Capacitor 권장 크기).
+const splashSvg = (bg = 'url(#ng)') => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732">
+  ${orangeGrad}
+  <rect width="2732" height="2732" fill="${bg}"/>
+  <g transform="translate(1366 1366)">
+    ${dumbbell({ color: ORANGE1, rotate: -22, scale: 1.6 })}
+  </g>
+</svg>`;
+
+async function render(svg, outPath, opts = {}) {
+  await sharp(Buffer.from(svg), { density: 384 })
+    .resize(opts.width ?? 1024, opts.height ?? 1024)
+    .png({ compressionLevel: 9 })
+    .toFile(outPath);
+  console.log('wrote', outPath);
+}
+
+await render(iconSquareSvg, 'assets/icon-only.png');
+await render(iconForegroundSvg, 'assets/icon-foreground.png');
+await render(iconBackgroundSvg, 'assets/icon-background.png');
+await render(splashSvg(), 'assets/splash.png', { width: 2732, height: 2732 });
+await render(splashSvg('url(#ng)'), 'assets/splash-dark.png', {
+  width: 2732,
+  height: 2732,
+});
+
+console.log('done.');
