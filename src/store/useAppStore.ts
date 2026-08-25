@@ -11,7 +11,7 @@ import type {
   RoutineExercise,
 } from '../types';
 import { estimate1RM } from '../utils/oneRepMax';
-import { nowISO, todayISO, uid } from '../utils/format';
+import { nowISO, uid } from '../utils/format';
 import { ROUTINE_TEMPLATES } from '../data/templates';
 
 interface AppState {
@@ -313,24 +313,5 @@ export const useAppStore = create<AppState>()(
   ),
 );
 
-// 오늘 이미 운동했는지
-export function selectTodayStats(state: AppState) {
-  const today = todayISO();
-  const todaySessions = state.sessions.filter(
-    (s) => s.startedAt.slice(0, 10) === today && !!s.finishedAt,
-  );
-  const volume = todaySessions.reduce((sum, s) => {
-    return (
-      sum +
-      s.exercises.reduce(
-        (a, e) => a + e.sets.reduce((b, st) => b + st.weightKg * st.reps, 0),
-        0,
-      )
-    );
-  }, 0);
-  const totalSets = todaySessions.reduce(
-    (sum, s) => sum + s.exercises.reduce((a, e) => a + e.sets.length, 0),
-    0,
-  );
-  return { count: todaySessions.length, volume, totalSets };
-}
+// NOTE: 파생 통계는 컴포넌트에서 useMemo 로 계산하세요.
+// Zustand 셀렉터가 매 렌더 새 객체를 반환하면 무한 리렌더가 발생합니다.

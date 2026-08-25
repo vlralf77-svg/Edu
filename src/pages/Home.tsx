@@ -11,9 +11,10 @@ import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded';
 import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/layout/PageHeader';
-import { selectTodayStats, useAppStore } from '../store/useAppStore';
+import { useAppStore } from '../store/useAppStore';
 import { formatDate, relativeDay, todayISO } from '../utils/format';
 import { findExercise } from '../data/exercises';
 import CalendarHeatmap from '../components/common/CalendarHeatmap';
@@ -24,9 +25,33 @@ export default function Home() {
   const sessions = useAppStore((s) => s.sessions);
   const routines = useAppStore((s) => s.routines);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
-  const stats = useAppStore(selectTodayStats);
 
-  const finishedSessions = sessions.filter((s) => s.finishedAt);
+  // Zustand 셀렉터가 매번 새 객체를 반환하면 무한 리렌더가 나므로,
+  // 원시 배열만 스토어에서 뽑고 파생 계산은 useMemo 로 처리.
+  const finishedSessions = useMemo(
+    () => sessions.filter((s) => s.finishedAt),
+    [sessions],
+  );
+  const stats = useMemo(() => {
+    const today = todayISO();
+    const todaySessions = finishedSessions.filter(
+      (s) => s.startedAt.slice(0, 10) === today,
+    );
+    const volume = todaySessions.reduce(
+      (sum, s) =>
+        sum +
+        s.exercises.reduce(
+          (a, e) => a + e.sets.reduce((b, st) => b + st.weightKg * st.reps, 0),
+          0,
+        ),
+      0,
+    );
+    const totalSets = todaySessions.reduce(
+      (sum, s) => sum + s.exercises.reduce((a, e) => a + e.sets.length, 0),
+      0,
+    );
+    return { count: todaySessions.length, volume, totalSets };
+  }, [finishedSessions]);
   const lastSession = finishedSessions[0];
 
   const feedback = buildCoachTip(sessions);
