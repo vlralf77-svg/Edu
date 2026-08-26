@@ -5,10 +5,10 @@ import {
   CardContent,
   Chip,
   IconButton,
-  MenuItem,
-  Select,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
@@ -148,90 +148,107 @@ export default function ExerciseSetsCard({
           ))}
         </Stack>
 
-        {/* 새 세트 입력 */}
-        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1.5 }}>
-          <Chip
-            size="small"
-            label={`${block.sets.length + 1}세트`}
-            color="primary"
-            variant="outlined"
-            sx={{ minWidth: 60 }}
-          />
-          <Select
-            size="small"
-            value={setType}
-            onChange={(e) => setSetType(e.target.value as SetType)}
-            sx={{ minWidth: 84 }}
-          >
-            {(['NORMAL', 'WARMUP', 'DROP', 'FAILURE'] as SetType[]).map((t) => (
-              <MenuItem key={t} value={t}>
-                {setTypeLabel[t]}
-              </MenuItem>
-            ))}
-          </Select>
-          <TextField
-            type="number"
-            inputProps={{
-              inputMode: 'decimal',
-              step: '0.5',
-              min: 0,
-              style: {
+        {/* 새 세트 입력 — 2단 레이아웃으로 무게/횟수 필드에 넓은 공간 확보 */}
+        <Box sx={{ mt: 1.5 }}>
+          {/* 상단: 세트 번호 + 세트 타입 (토글 버튼 그룹) */}
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+            <Chip
+              size="small"
+              label={`${block.sets.length + 1}세트`}
+              color="primary"
+              variant="outlined"
+              sx={{ minWidth: 60 }}
+            />
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={setType}
+              onChange={(_, v) => v && setSetType(v as SetType)}
+              sx={{
+                flex: 1,
+                '& .MuiToggleButton-root': {
+                  flex: 1,
+                  py: 0.4,
+                  fontSize: 12,
+                  fontWeight: 700,
+                },
+              }}
+            >
+              {(['NORMAL', 'WARMUP', 'DROP', 'FAILURE'] as SetType[]).map((t) => (
+                <ToggleButton key={t} value={t}>
+                  {setTypeLabel[t]}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Stack>
+
+          {/* 하단: 무게 × 횟수 입력 (필드 폭 최대화) */}
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <TextField
+              type="number"
+              inputProps={{
+                inputMode: 'decimal',
+                step: '0.5',
+                min: 0,
+                style: {
+                  fontSize: 26,
+                  fontWeight: 800,
+                  textAlign: 'center',
+                  padding: '12px 6px',
+                  fontVariantNumeric: 'tabular-nums',
+                },
+              }}
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              sx={{ flex: 3 }}
+              placeholder="kg"
+            />
+            <Box
+              sx={{
+                color: 'text.secondary',
+                px: 0.25,
                 fontSize: 22,
                 fontWeight: 700,
-                textAlign: 'center',
-                padding: '10px 6px',
-                fontVariantNumeric: 'tabular-nums',
-              },
-            }}
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            sx={{ flex: 1 }}
-            placeholder="kg"
-          />
-          <Box
-            sx={{
-              color: 'text.secondary',
-              px: 0.5,
-              fontSize: 18,
-              fontWeight: 700,
-            }}
-          >
-            ×
-          </Box>
-          <TextField
-            type="number"
-            inputProps={{
-              inputMode: 'numeric',
-              min: 1,
-              style: {
-                fontSize: 22,
-                fontWeight: 700,
-                textAlign: 'center',
-                padding: '10px 6px',
-                fontVariantNumeric: 'tabular-nums',
-              },
-            }}
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            sx={{ width: 84 }}
-            placeholder="reps"
-          />
-          <IconButton
-            color="primary"
-            onClick={handleAdd}
-            sx={{
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              width: 48,
-              height: 48,
-              '&:hover': { bgcolor: 'primary.dark' },
-            }}
-          >
-            <CheckRoundedIcon fontSize="medium" />
-          </IconButton>
-        </Stack>
+              }}
+            >
+              ×
+            </Box>
+            <TextField
+              type="number"
+              inputProps={{
+                inputMode: 'numeric',
+                min: 1,
+                style: {
+                  fontSize: 26,
+                  fontWeight: 800,
+                  textAlign: 'center',
+                  padding: '12px 6px',
+                  fontVariantNumeric: 'tabular-nums',
+                },
+              }}
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              sx={{ flex: 2 }}
+              placeholder="reps"
+            />
+            <IconButton
+              color="primary"
+              onClick={handleAdd}
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                width: 56,
+                height: 56,
+                borderRadius: 2,
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+            >
+              <CheckRoundedIcon fontSize="large" />
+            </IconButton>
+          </Stack>
+        </Box>
       </CardContent>
     </Card>
   );
