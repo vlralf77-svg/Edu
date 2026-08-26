@@ -1,87 +1,61 @@
 import { Box } from '@mui/material';
+import type { ReactNode } from 'react';
 
 // 스틱피겨 동작 패턴 코드
 export type MovementArchetype =
-  | 'BENCH_PRESS' // 벤치프레스 (수평 밀기)
-  | 'INCLINE_PRESS' // 인클라인 프레스
-  | 'OVERHEAD_PRESS' // 오버헤드 프레스 (수직 밀기)
-  | 'SQUAT' // 스쿼트
-  | 'DEADLIFT' // 데드리프트 (힙 힌지)
-  | 'HIP_THRUST' // 힙 쓰러스트
-  | 'ROW' // 로우 (수평 당기기)
-  | 'PULLUP' // 풀업 · 랫풀다운 (수직 당기기)
-  | 'BICEPS_CURL' // 이두 컬
-  | 'TRICEPS_PUSHDOWN' // 삼두 푸시다운
-  | 'LATERAL_RAISE' // 사이드 레터럴 레이즈
-  | 'FRONT_RAISE' // 프론트 레이즈
-  | 'FLY' // 플라이
-  | 'LUNGE' // 런지
-  | 'LEG_EXT' // 레그 익스텐션
-  | 'LEG_CURL' // 레그 컬
-  | 'CALF_RAISE' // 카프 레이즈
-  | 'CRUNCH' // 크런치
-  | 'PLANK' // 플랭크
-  | 'RUNNING' // 러닝·유산소
-  | 'PUSHUP' // 푸시업
-  | 'DIPS' // 딥스
-  | 'GENERIC'; // 매핑 안 된 경우 폴백
+  | 'BENCH_PRESS'
+  | 'INCLINE_PRESS'
+  | 'OVERHEAD_PRESS'
+  | 'SQUAT'
+  | 'DEADLIFT'
+  | 'HIP_THRUST'
+  | 'ROW'
+  | 'PULLUP'
+  | 'BICEPS_CURL'
+  | 'TRICEPS_PUSHDOWN'
+  | 'LATERAL_RAISE'
+  | 'FRONT_RAISE'
+  | 'FLY'
+  | 'LUNGE'
+  | 'LEG_EXT'
+  | 'LEG_CURL'
+  | 'CALF_RAISE'
+  | 'CRUNCH'
+  | 'PLANK'
+  | 'RUNNING'
+  | 'PUSHUP'
+  | 'DIPS'
+  | 'GENERIC';
 
-// 종목 ID → 동작 패턴 매핑.
-// 접두어 검색으로 대부분 커버, 개별 예외는 아래에서 처리.
+// 종목 ID → 동작 패턴 매핑
 const ID_MAP: Array<[RegExp, MovementArchetype]> = [
-  // 인클라인/디클라인 벤치는 인클라인 프레스
   [/^ex-bench-incline|^ex-chest-press-incline|^ex-bench-incline-db|^ex-bench-incline-smith/, 'INCLINE_PRESS'],
-  // 벤치프레스 계열 (수평)
-  [/^ex-bench|^ex-chest-press|^ex-db-fly|^ex-cable-cross|^ex-cable-fly|^ex-pec-deck|^ex-chest-fly|^ex-db-pullover/, 'BENCH_PRESS'],
-  // 플라이 (덤벨/케이블/머신 fly)
-  [/^ex-db-fly|^ex-cable-fly|^ex-cable-cross|^ex-pec-deck|^ex-chest-fly/, 'FLY'],
-  // 딥스
-  [/^ex-dips|^ex-tri-dips-bench/, 'DIPS'],
-  // 푸시업
-  [/^ex-pushup/, 'PUSHUP'],
-  // 오버헤드 프레스
-  [/^ex-ohp|^ex-push-press|^ex-shoulder-press|^ex-db-shoulder-press|^ex-barbell-shoulder-press|^ex-kb-shoulder-press/, 'OVERHEAD_PRESS'],
-  // 사이드 레터럴 레이즈
-  [/^ex-side-lat-raise|^ex-db-side-raise|^ex-cable-side-raise|^ex-bentover-cable-side-raise|^ex-bentover-db-side-raise|^ex-upright-row/, 'LATERAL_RAISE'],
-  // 프론트 레이즈
-  [/^ex-db-front-raise|^ex-barbell-front-raise|^ex-ezbar-front-raise|^ex-cable-front-raise/, 'FRONT_RAISE'],
-  // 리어델트 플라이 → 플라이 애니메이션 (뒤로 벌리는 모션)
+  [/^ex-bench|^ex-chest-press/, 'BENCH_PRESS'],
+  [/^ex-db-fly|^ex-cable-fly|^ex-cable-cross|^ex-pec-deck|^ex-chest-fly|^ex-db-pullover/, 'FLY'],
   [/^ex-rear-delt-fly|^ex-cable-reverse-fly|^ex-rear-lat-raise|^ex-face-pull/, 'FLY'],
-  // 슈러그도 오버헤드 프레스 (수직 움직임)
+  [/^ex-dips|^ex-tri-dips-bench/, 'DIPS'],
+  [/^ex-pushup/, 'PUSHUP'],
+  [/^ex-ohp|^ex-push-press|^ex-shoulder-press|^ex-db-shoulder-press|^ex-barbell-shoulder-press|^ex-kb-shoulder-press/, 'OVERHEAD_PRESS'],
+  [/^ex-side-lat-raise|^ex-db-side-raise|^ex-cable-side-raise|^ex-bentover-cable-side-raise|^ex-bentover-db-side-raise|^ex-upright-row/, 'LATERAL_RAISE'],
+  [/^ex-db-front-raise|^ex-barbell-front-raise|^ex-ezbar-front-raise|^ex-cable-front-raise/, 'FRONT_RAISE'],
   [/^ex-shrug/, 'OVERHEAD_PRESS'],
-  // 스쿼트 계열
   [/^ex-squat|^ex-front-squat|^ex-goblet-squat|^ex-air-squat|^ex-jump-squat|^ex-sumo-squat|^ex-box-squat|^ex-fixed-box-squat|^ex-smith-squat|^ex-hack-squat|^ex-v-squat|^ex-reverse-v-squat|^ex-db-squat/, 'SQUAT'],
-  // 스플릿·불가리안·런지
   [/^ex-lunge|^ex-split-squat|^ex-bulgarian-split/, 'LUNGE'],
-  // 데드리프트 · RDL · 스티프
   [/^ex-deadlift|^ex-rdl|^ex-rack-pull|^ex-back-extension|^ex-hyper|^ex-cable-pull-through/, 'DEADLIFT'],
-  // 힙 쓰러스트
   [/^ex-hip-thrust/, 'HIP_THRUST'],
-  // 힙 어덕션/어브덕션도 힙 쓰러스트 유사 자세
   [/^ex-hip-abduction|^ex-hip-adduction/, 'HIP_THRUST'],
-  // 레그 프레스도 스쿼트 패턴 (다리 굽혔다 폄)
   [/^ex-leg-press/, 'SQUAT'],
-  // 레그 익스텐션 (앉아서 다리 뻗기)
   [/^ex-leg-ext/, 'LEG_EXT'],
-  // 레그 컬 (엎드려 다리 접기)
   [/^ex-leg-curl/, 'LEG_CURL'],
-  // 카프 레이즈
   [/^ex-calf/, 'CALF_RAISE'],
-  // 로우 계열
   [/^ex-barbell-row|^ex-pendlay-row|^ex-db-row|^ex-t-bar-row|^ex-seated-row|^ex-smith-row|^ex-mid-row|^ex-high-row|^ex-low-row|^ex-chest-supported-tbar-row|^ex-inverted-row/, 'ROW'],
-  // 풀업 · 랫풀다운
   [/^ex-pullup|^ex-chinup|^ex-lat-pulldown|^ex-cable-arm-pulldown/, 'PULLUP'],
-  // 이두 컬
   [/^ex-barbell-curl|^ex-ezbar-curl|^ex-db-curl|^ex-hammer-curl|^ex-preacher-curl|^ex-cable-curl|^ex-concentration-curl|^ex-spider-curl|^ex-wrist-curl|^ex-reverse-wrist-curl/, 'BICEPS_CURL'],
-  // 삼두 계열
   [/^ex-close-grip-bench|^ex-tri-pushdown|^ex-overhead-ext|^ex-skull-crusher|^ex-tri-kickback/, 'TRICEPS_PUSHDOWN'],
-  // 코어
   [/^ex-plank|^ex-side-plank/, 'PLANK'],
   [/^ex-crunch|^ex-russian-twist|^ex-cable-woodchop|^ex-ab-wheel/, 'CRUNCH'],
   [/^ex-leg-raise|^ex-hanging-leg-raise|^ex-hanging-knee-raise|^ex-mountain-climber/, 'CRUNCH'],
-  // 유산소
   [/^ex-running|^ex-cycling|^ex-rowing|^ex-jump-rope|^ex-elliptical|^ex-stair|^ex-treadmill/, 'RUNNING'],
-  // 전신
   [/^ex-burpee/, 'PUSHUP'],
   [/^ex-clean-jerk|^ex-snatch|^ex-thruster|^ex-turkish-getup|^ex-kb-swing/, 'DEADLIFT'],
 ];
@@ -93,7 +67,6 @@ export function idToArchetype(exerciseId: string): MovementArchetype {
   return 'GENERIC';
 }
 
-// 아이덤별 자세한 설명 (원리 + 핵심 큐)
 const CUES: Record<MovementArchetype, string[]> = {
   BENCH_PRESS: [
     '벤치에 누워 어깨를 뒤로 조이고 견갑을 고정',
@@ -215,641 +188,1151 @@ export function getCues(exerciseId: string): string[] {
   return CUES[idToArchetype(exerciseId)];
 }
 
-// SVG 스틱피겨 애니메이션 컴포넌트.
-// keyframes 는 인라인 <style> 로 정의해 동적 컴포넌트별로 안전하게 분리.
+// ========== 시각 상수 ==========
+const SKIN = '#F5E1CB'; // 살색 톤 다운
+const BODY = '#3D4A5C'; // 몸통 옷 색상
+const BODY_DARK = '#2A3441';
+const ACCENT = '#FF6B35'; // 오렌지 (타겟 근육/포커스)
+const GEAR_DARK = '#1A2332'; // 원판·바
+const GEAR_METAL = '#B0BEC5'; // 은색 부품
+const GROUND = 'rgba(255,255,255,0.08)';
+
+// SVG 그라디언트·필터 defs (모든 도형이 참조)
+function SvgDefs({ id }: { id: string }) {
+  return (
+    <defs>
+      <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor={BODY} />
+        <stop offset="1" stopColor={BODY_DARK} />
+      </linearGradient>
+      <radialGradient id={`${id}-plate`} cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stopColor="#3A4756" />
+        <stop offset="1" stopColor={GEAR_DARK} />
+      </radialGradient>
+      <radialGradient id={`${id}-glow`} cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stopColor={ACCENT} stopOpacity="0.9" />
+        <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
+      </radialGradient>
+      <filter id={`${id}-soft`} x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="2" />
+      </filter>
+    </defs>
+  );
+}
+
+// ==================== 공통 파츠 ====================
+
+// 관절 원 (뼈 연결부)
+const Joint = ({ cx, cy, r = 3 }: { cx: number; cy: number; r?: number }) => (
+  <circle cx={cx} cy={cy} r={r} fill={BODY} />
+);
+
+// 두꺼운 뼈 (사각형/선분)
+const Bone = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  w = 8,
+  color = BODY,
+}: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  w?: number;
+  color?: string;
+}) => (
+  <line
+    x1={x1}
+    y1={y1}
+    x2={x2}
+    y2={y2}
+    stroke={color}
+    strokeWidth={w}
+    strokeLinecap="round"
+  />
+);
+
+// 머리 + 목
+const Head = ({ cx, cy, r = 10, id }: { cx: number; cy: number; r?: number; id: string }) => (
+  <>
+    <circle cx={cx} cy={cy} r={r} fill={SKIN} stroke={BODY_DARK} strokeWidth={1.5} />
+    {/* 머리카락 살짝 */}
+    <path
+      d={`M ${cx - r * 0.9} ${cy - r * 0.3} Q ${cx} ${cy - r * 1.3} ${cx + r * 0.9} ${cy - r * 0.3}`}
+      fill={BODY_DARK}
+    />
+    <SvgDefs id={id} />
+  </>
+);
+
+// 몸통 (사다리꼴 – 어깨 넓고 허리 좁게)
+const Torso = ({
+  cx,
+  cyTop,
+  cyBottom,
+  wShoulder = 34,
+  wHip = 26,
+  id,
+}: {
+  cx: number;
+  cyTop: number;
+  cyBottom: number;
+  wShoulder?: number;
+  wHip?: number;
+  id: string;
+}) => {
+  const l1 = cx - wShoulder / 2;
+  const r1 = cx + wShoulder / 2;
+  const l2 = cx - wHip / 2;
+  const r2 = cx + wHip / 2;
+  return (
+    <path
+      d={`M ${l1} ${cyTop} L ${r1} ${cyTop} L ${r2} ${cyBottom} L ${l2} ${cyBottom} Z`}
+      fill={`url(#${id}-body)`}
+      stroke={BODY_DARK}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+  );
+};
+
+// 바벨 (플레이트 붙은 봉)
+const Barbell = ({
+  x1,
+  x2,
+  y,
+  plate = 10,
+  className,
+  id,
+}: {
+  x1: number;
+  x2: number;
+  y: number;
+  plate?: number;
+  className?: string;
+  id: string;
+}) => (
+  <g className={className}>
+    <line x1={x1} y1={y} x2={x2} y2={y} stroke={GEAR_METAL} strokeWidth={4} strokeLinecap="round" />
+    <rect
+      x={x1 - 3}
+      y={y - plate * 1.1}
+      width={6}
+      height={plate * 2.2}
+      fill={`url(#${id}-plate)`}
+      rx={2}
+    />
+    <rect
+      x={x2 - 3}
+      y={y - plate * 1.1}
+      width={6}
+      height={plate * 2.2}
+      fill={`url(#${id}-plate)`}
+      rx={2}
+    />
+    <circle cx={x1} cy={y} r={plate} fill={`url(#${id}-plate)`} stroke={BODY_DARK} strokeWidth={1.5} />
+    <circle cx={x2} cy={y} r={plate} fill={`url(#${id}-plate)`} stroke={BODY_DARK} strokeWidth={1.5} />
+    {/* 원판 하이라이트 */}
+    <circle cx={x1 - 3} cy={y - 3} r={2.5} fill="rgba(255,255,255,0.25)" />
+    <circle cx={x2 - 3} cy={y - 3} r={2.5} fill="rgba(255,255,255,0.25)" />
+  </g>
+);
+
+// 덤벨 (한쪽만)
+const Dumbbell = ({ cx, cy, size = 7 }: { cx: number; cy: number; size?: number }) => (
+  <g>
+    <rect x={cx - 3} y={cy - 2} width={6} height={4} fill={GEAR_METAL} rx={1} />
+    <circle cx={cx - 5} cy={cy} r={size} fill={GEAR_DARK} stroke={BODY_DARK} strokeWidth={1} />
+    <circle cx={cx + 5} cy={cy} r={size} fill={GEAR_DARK} stroke={BODY_DARK} strokeWidth={1} />
+  </g>
+);
+
+// 근육 타겟 글로우 (peak 순간에 커짐)
+const MuscleGlow = ({
+  cx,
+  cy,
+  r = 14,
+  className,
+  id,
+}: {
+  cx: number;
+  cy: number;
+  r?: number;
+  className?: string;
+  id: string;
+}) => (
+  <circle cx={cx} cy={cy} r={r} fill={`url(#${id}-glow)`} className={className} />
+);
+
+// 방향 화살표 (모션 힌트)
+const MotionArrow = ({
+  x,
+  y,
+  direction,
+  size = 10,
+}: {
+  x: number;
+  y: number;
+  direction: 'up' | 'down' | 'left' | 'right';
+  size?: number;
+}) => {
+  const angle = { up: 0, right: 90, down: 180, left: 270 }[direction];
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle})`}>
+      <path
+        d={`M 0 ${-size} L ${-size * 0.6} ${size * 0.4} L 0 0 L ${size * 0.6} ${size * 0.4} Z`}
+        fill={ACCENT}
+      />
+    </g>
+  );
+};
+
+// 지면
+const Ground = ({ y = 195 }: { y?: number }) => (
+  <line x1="10" y1={y} x2="230" y2={y} stroke={GROUND} strokeWidth={3} strokeLinecap="round" />
+);
+
+// 벤치
+const Bench = ({
+  x,
+  y,
+  w = 140,
+  h = 8,
+}: {
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+}) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} fill="#4A5568" rx={2} stroke={BODY_DARK} strokeWidth={1} />
+    <rect x={x + 6} y={y + h} width={6} height={h * 3} fill="#374151" />
+    <rect x={x + w - 12} y={y + h} width={6} height={h * 3} fill="#374151" />
+  </g>
+);
+
+// 스틱피겨 컨테이너
 export default function ExerciseAnimation({
   archetype,
 }: {
   archetype: MovementArchetype;
 }) {
+  const R = renderArchetype(archetype);
   return (
     <Box
       sx={{
         display: 'flex',
         justifyContent: 'center',
-        py: 1,
+        py: 1.5,
         bgcolor: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 2,
+        overflow: 'hidden',
       }}
     >
-      <svg viewBox="0 0 240 200" width={240} height={200}>
-        {renderArchetype(archetype)}
+      <svg viewBox="0 0 240 210" width={260} height={228} xmlns="http://www.w3.org/2000/svg">
+        {R}
       </svg>
     </Box>
   );
 }
 
-// 각 archetype 별 스틱피겨 keyframes 정의.
-// 대칭 팔/다리는 transform-origin 을 관절에 두고 회전.
-
-function renderArchetype(a: MovementArchetype): JSX.Element {
+function renderArchetype(a: MovementArchetype): ReactNode {
   switch (a) {
-    case 'BENCH_PRESS':
-      return <BenchPressFigure />;
-    case 'INCLINE_PRESS':
-      return <InclinePressFigure />;
-    case 'OVERHEAD_PRESS':
-      return <OverheadPressFigure />;
-    case 'SQUAT':
-      return <SquatFigure />;
-    case 'DEADLIFT':
-      return <DeadliftFigure />;
-    case 'HIP_THRUST':
-      return <HipThrustFigure />;
-    case 'ROW':
-      return <RowFigure />;
-    case 'PULLUP':
-      return <PullupFigure />;
-    case 'BICEPS_CURL':
-      return <BicepsCurlFigure />;
-    case 'TRICEPS_PUSHDOWN':
-      return <TricepsPushdownFigure />;
-    case 'LATERAL_RAISE':
-      return <LateralRaiseFigure />;
-    case 'FRONT_RAISE':
-      return <FrontRaiseFigure />;
-    case 'FLY':
-      return <FlyFigure />;
-    case 'LUNGE':
-      return <LungeFigure />;
-    case 'LEG_EXT':
-      return <LegExtFigure />;
-    case 'LEG_CURL':
-      return <LegCurlFigure />;
-    case 'CALF_RAISE':
-      return <CalfRaiseFigure />;
-    case 'CRUNCH':
-      return <CrunchFigure />;
-    case 'PLANK':
-      return <PlankFigure />;
-    case 'RUNNING':
-      return <RunningFigure />;
-    case 'PUSHUP':
-      return <PushupFigure />;
-    case 'DIPS':
-      return <DipsFigure />;
-    default:
-      return <GenericFigure />;
+    case 'BENCH_PRESS': return <BenchPressFigure />;
+    case 'INCLINE_PRESS': return <InclinePressFigure />;
+    case 'OVERHEAD_PRESS': return <OverheadPressFigure />;
+    case 'SQUAT': return <SquatFigure />;
+    case 'DEADLIFT': return <DeadliftFigure />;
+    case 'HIP_THRUST': return <HipThrustFigure />;
+    case 'ROW': return <RowFigure />;
+    case 'PULLUP': return <PullupFigure />;
+    case 'BICEPS_CURL': return <BicepsCurlFigure />;
+    case 'TRICEPS_PUSHDOWN': return <TricepsPushdownFigure />;
+    case 'LATERAL_RAISE': return <LateralRaiseFigure />;
+    case 'FRONT_RAISE': return <FrontRaiseFigure />;
+    case 'FLY': return <FlyFigure />;
+    case 'LUNGE': return <LungeFigure />;
+    case 'LEG_EXT': return <LegExtFigure />;
+    case 'LEG_CURL': return <LegCurlFigure />;
+    case 'CALF_RAISE': return <CalfRaiseFigure />;
+    case 'CRUNCH': return <CrunchFigure />;
+    case 'PLANK': return <PlankFigure />;
+    case 'RUNNING': return <RunningFigure />;
+    case 'PUSHUP': return <PushupFigure />;
+    case 'DIPS': return <DipsFigure />;
+    default: return <GenericFigure />;
   }
 }
 
-// 공통 스타일
-const STROKE = '#FF6B35';
-const BODY = '#F1F5F9';
-const GEAR = '#94A3B8';
-const style = { stroke: BODY, strokeWidth: 3, fill: 'none', strokeLinecap: 'round' as const };
-const gearStyle = { stroke: GEAR, strokeWidth: 2, fill: GEAR };
-const barStyle = { stroke: GEAR, strokeWidth: 4, fill: 'none', strokeLinecap: 'round' as const };
-
-// ==================== 개별 스틱피겨 ====================
+// ==================== 개별 스틱피겨 (풍부 버전) ====================
 
 function BenchPressFigure() {
+  const id = 'bp';
   return (
     <>
       <style>{`
-        @keyframes bpArm { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(45deg); } }
-        @keyframes bpFore { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-40deg); } }
-        @keyframes bpBar { 0%,100% { transform: translateY(0); } 50% { transform: translateY(30px); } }
-        .bp-arm { animation: bpArm 1.6s ease-in-out infinite; transform-origin: 130px 90px; }
-        .bp-fore { animation: bpFore 1.6s ease-in-out infinite; transform-origin: 160px 60px; }
-        .bp-bar { animation: bpBar 1.6s ease-in-out infinite; }
+        @keyframes ${id}-upperArm { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(52deg); } }
+        @keyframes ${id}-forearm { 0%,100% { transform: rotate(80deg); } 50% { transform: rotate(2deg); } }
+        @keyframes ${id}-bar     { 0%,100% { transform: translateY(0); }  50% { transform: translateY(38px); } }
+        @keyframes ${id}-glow    { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.4); opacity: 0.9; } }
+        .${id}-ua-l { animation: ${id}-upperArm 1.8s ease-in-out infinite; transform-origin: 120px 90px; }
+        .${id}-ua-r { animation: ${id}-upperArm 1.8s ease-in-out infinite; transform-origin: 140px 90px; }
+        .${id}-fa-l { animation: ${id}-forearm  1.8s ease-in-out infinite; transform-origin: 100px 60px; }
+        .${id}-fa-r { animation: ${id}-forearm  1.8s ease-in-out infinite; transform-origin: 160px 60px; }
+        .${id}-bar  { animation: ${id}-bar      1.8s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow     1.8s ease-in-out infinite; transform-origin: 130px 90px; }
       `}</style>
-      {/* 벤치 */}
-      <rect x="40" y="110" width="140" height="6" fill={GEAR} rx="2" />
-      <line x1="60" y1="116" x2="60" y2="150" {...barStyle} />
-      <line x1="160" y1="116" x2="160" y2="150" {...barStyle} />
-      {/* 몸통 (누운 자세) */}
-      <line x1="70" y1="108" x2="150" y2="108" {...style} />
-      <circle cx="60" cy="105" r="8" fill={BODY} />
-      {/* 다리 */}
-      <line x1="150" y1="108" x2="180" y2="140" {...style} />
-      <line x1="180" y1="140" x2="180" y2="170" {...style} />
-      {/* 팔 (움직임) */}
-      <g className="bp-arm">
-        <line x1="130" y1="108" x2="160" y2="80" {...style} />
-        <g className="bp-fore">
-          <line x1="160" y1="80" x2="160" y2="55" {...style} />
+      <Head cx={40} cy={95} r={11} id={id} />
+
+      <Bench x={40} y={112} />
+
+      {/* 다리 (누워 무릎 굽힘) */}
+      <Bone x1={155} y1={100} x2={190} y2={135} w={10} />
+      <Bone x1={190} y1={135} x2={200} y2={175} w={10} />
+      <Joint cx={190} cy={135} r={5} />
+      {/* 발 */}
+      <line x1="195" y1="175" x2="215" y2="175" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      {/* 몸통 (누운 자세 - 옆으로) */}
+      <path
+        d={`M 55 95 L 155 95 L 158 105 L 55 105 Z`}
+        fill={`url(#${id}-body)`}
+        stroke={BODY_DARK}
+        strokeWidth={1.5}
+      />
+
+      {/* 근육 타겟 글로우 (가슴 부위) */}
+      <MuscleGlow cx={130} cy={90} r={20} className={`${id}-glow`} id={id} />
+
+      {/* 팔 (양쪽 겹쳐 그려서 두꺼워 보임) */}
+      <g className={`${id}-ua-r`}>
+        <Bone x1={140} y1={90} x2={160} y2={60} w={9} />
+        <Joint cx={160} cy={60} r={4} />
+        <g className={`${id}-fa-r`}>
+          <Bone x1={160} y1={60} x2={160} y2={30} w={8} />
         </g>
       </g>
-      {/* 바벨 */}
-      <g className="bp-bar">
-        <line x1="120" y1="55" x2="200" y2="55" {...barStyle} strokeWidth={5} />
-        <circle cx="120" cy="55" r="9" {...gearStyle} />
-        <circle cx="200" cy="55" r="9" {...gearStyle} />
+      <g className={`${id}-ua-l`}>
+        <Bone x1={120} y1={90} x2={100} y2={60} w={9} color="#334155" />
+        <Joint cx={100} cy={60} r={4} />
+        <g className={`${id}-fa-l`}>
+          <Bone x1={100} y1={60} x2={100} y2={30} w={8} color="#334155" />
+        </g>
+      </g>
+
+      {/* 바벨 (움직임) */}
+      <g className={`${id}-bar`}>
+        <Barbell x1={100} x2={160} y={30} id={id} />
+        <MotionArrow x={130} y={-2} direction="up" size={9} />
       </g>
     </>
   );
 }
 
 function InclinePressFigure() {
+  const id = 'ip';
   return (
     <>
       <style>{`
-        @keyframes ipArm { 0%,100% { transform: rotate(-10deg); } 50% { transform: rotate(35deg); } }
-        .ip-arm { animation: ipArm 1.6s ease-in-out infinite; transform-origin: 120px 100px; }
+        @keyframes ${id}-arm { 0%,100% { transform: rotate(-15deg); } 50% { transform: rotate(45deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.7); opacity: 0.3; } 50% { transform: scale(1.4); opacity: 0.85; } }
+        .${id}-arm-l { animation: ${id}-arm 1.8s ease-in-out infinite; transform-origin: 130px 100px; }
+        .${id}-arm-r { animation: ${id}-arm 1.8s ease-in-out infinite; transform-origin: 130px 100px; }
+        .${id}-glow  { animation: ${id}-glow 1.8s ease-in-out infinite; transform-origin: 125px 90px; }
       `}</style>
+      <SvgDefs id={id} />
+
       {/* 인클라인 벤치 */}
-      <polygon points="40,170 180,90 190,100 50,180" fill={GEAR} />
-      {/* 몸통 */}
-      <line x1="60" y1="160" x2="150" y2="95" {...style} />
-      <circle cx="155" cy="90" r="8" fill={BODY} />
+      <polygon points="30,180 175,80 185,90 40,190" fill="#4A5568" stroke={BODY_DARK} strokeWidth={1.5} />
+
       {/* 다리 */}
-      <line x1="60" y1="160" x2="45" y2="185" {...style} />
+      <Bone x1={50} y1={168} x2={70} y2={195} w={9} />
+      <Bone x1={70} y1={195} x2={90} y2={195} w={8} />
+
+      {/* 몸통 (기울어짐) */}
+      <path
+        d={`M 68 158 L 155 90 L 160 100 L 74 168 Z`}
+        fill={`url(#${id}-body)`}
+        stroke={BODY_DARK}
+        strokeWidth={1.5}
+      />
+      <Head cx={162} cy={82} r={11} id={id + '2'} />
+
+      <MuscleGlow cx={125} cy={90} r={22} className={`${id}-glow`} id={id} />
+
       {/* 팔 */}
-      <g className="ip-arm">
-        <line x1="120" y1="100" x2="150" y2="55" {...style} />
-        <line x1="150" y1="55" x2="180" y2="55" {...barStyle} strokeWidth={5} />
-        <circle cx="150" cy="55" r="7" {...gearStyle} />
-        <circle cx="180" cy="55" r="7" {...gearStyle} />
+      <g className={`${id}-arm-r`}>
+        <Bone x1={130} y1={100} x2={160} y2={50} w={9} />
+        <Joint cx={160} cy={50} r={4} />
+        <Barbell x1={135} x2={185} y={50} plate={9} id={id} />
       </g>
     </>
   );
 }
 
 function OverheadPressFigure() {
+  const id = 'ohp';
   return (
     <>
       <style>{`
-        @keyframes ohpArm { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-140deg); } }
-        @keyframes ohpBar { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-40px); } }
-        .ohp-arm { animation: ohpArm 1.6s ease-in-out infinite; transform-origin: 120px 90px; }
-        .ohp-bar { animation: ohpBar 1.6s ease-in-out infinite; }
+        @keyframes ${id}-ua { 0%,100% { transform: rotate(90deg); } 50% { transform: rotate(0deg); } }
+        @keyframes ${id}-fa { 0%,100% { transform: rotate(-90deg); } 50% { transform: rotate(0deg); } }
+        @keyframes ${id}-bar { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-50px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.4); opacity: 0.8; } }
+        .${id}-ua-l { animation: ${id}-ua 1.8s ease-in-out infinite; transform-origin: 105px 92px; }
+        .${id}-ua-r { animation: ${id}-ua 1.8s ease-in-out infinite; transform-origin: 135px 92px; }
+        .${id}-fa-l { animation: ${id}-fa 1.8s ease-in-out infinite; transform-origin: 85px 110px; }
+        .${id}-fa-r { animation: ${id}-fa 1.8s ease-in-out infinite; transform-origin: 155px 110px; }
+        .${id}-bar  { animation: ${id}-bar 1.8s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 1.8s ease-in-out infinite; transform-origin: 120px 88px; }
       `}</style>
+
+      {/* 지면 */}
+      <Ground y={192} />
+
       {/* 다리 */}
-      <line x1="120" y1="150" x2="100" y2="190" {...style} />
-      <line x1="120" y1="150" x2="140" y2="190" {...style} />
+      <Bone x1={110} y1={155} x2={100} y2={192} w={12} />
+      <Bone x1={130} y1={155} x2={140} y2={192} w={12} />
+      <Joint cx={110} cy={155} r={5} />
+      <Joint cx={130} cy={155} r={5} />
+      <line x1="93" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="155" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
       {/* 몸통 */}
-      <line x1="120" y1="90" x2="120" y2="150" {...style} />
+      <Torso cx={120} cyTop={92} cyBottom={158} wShoulder={38} wHip={28} id={id} />
+
+      <MuscleGlow cx={120} cy={88} r={22} className={`${id}-glow`} id={id} />
+
       {/* 머리 */}
-      <circle cx="120" cy="80" r="10" fill={BODY} />
-      {/* 팔 */}
-      <g className="ohp-arm">
-        <line x1="120" y1="90" x2="80" y2="110" {...style} />
-        <line x1="120" y1="90" x2="160" y2="110" {...style} />
+      <Head cx={120} cy={78} r={11} id={id + '2'} />
+
+      {/* 팔 (양쪽 벌리기) */}
+      <g className={`${id}-ua-l`}>
+        <Bone x1={105} y1={92} x2={85} y2={110} w={9} />
+        <Joint cx={85} cy={110} r={4} />
+        <g className={`${id}-fa-l`}>
+          <Bone x1={85} y1={110} x2={85} y2={90} w={8} />
+        </g>
       </g>
+      <g className={`${id}-ua-r`}>
+        <Bone x1={135} y1={92} x2={155} y2={110} w={9} />
+        <Joint cx={155} cy={110} r={4} />
+        <g className={`${id}-fa-r`}>
+          <Bone x1={155} y1={110} x2={155} y2={90} w={8} />
+        </g>
+      </g>
+
       {/* 바 */}
-      <g className="ohp-bar">
-        <line x1="80" y1="110" x2="160" y2="110" {...barStyle} strokeWidth={5} />
-        <circle cx="80" cy="110" r="8" {...gearStyle} />
-        <circle cx="160" cy="110" r="8" {...gearStyle} />
+      <g className={`${id}-bar`}>
+        <Barbell x1={70} x2={170} y={95} plate={10} id={id} />
+        <MotionArrow x={120} y={55} direction="up" size={9} />
       </g>
     </>
   );
 }
 
 function SquatFigure() {
+  const id = 'sq';
   return (
     <>
       <style>{`
-        @keyframes sqHip { 0%,100% { transform: translateY(0); } 50% { transform: translateY(30px); } }
-        @keyframes sqThigh { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(35deg); } }
-        @keyframes sqShin { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-35deg); } }
-        .sq-body { animation: sqHip 1.8s ease-in-out infinite; }
-        .sq-thigh-l { animation: sqThigh 1.8s ease-in-out infinite; transform-origin: 105px 130px; }
-        .sq-thigh-r { animation: sqThigh 1.8s ease-in-out infinite; transform-origin: 135px 130px; }
-        .sq-shin-l { animation: sqShin 1.8s ease-in-out infinite; transform-origin: 105px 160px; }
-        .sq-shin-r { animation: sqShin 1.8s ease-in-out infinite; transform-origin: 135px 160px; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(28px) rotate(-8deg); } }
+        @keyframes ${id}-thigh { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(35deg); } }
+        @keyframes ${id}-shin { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-40deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.3); opacity: 0.8; } }
+        .${id}-body { animation: ${id}-body 2s ease-in-out infinite; transform-origin: 120px 130px; }
+        .${id}-thigh-l { animation: ${id}-thigh 2s ease-in-out infinite; transform-origin: 108px 128px; }
+        .${id}-thigh-r { animation: ${id}-thigh 2s ease-in-out infinite; transform-origin: 132px 128px; }
+        .${id}-shin-l { animation: ${id}-shin 2s ease-in-out infinite; transform-origin: 105px 165px; }
+        .${id}-shin-r { animation: ${id}-shin 2s ease-in-out infinite; transform-origin: 135px 165px; }
+        .${id}-glow { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 120px 165px; }
       `}</style>
-      {/* 발 (고정) */}
-      <line x1="95" y1="185" x2="115" y2="185" {...style} strokeWidth={4} />
-      <line x1="125" y1="185" x2="145" y2="185" {...style} strokeWidth={4} />
+
+      <Ground y={192} />
+
+      {/* 발 */}
+      <line x1="90" y1="192" x2="120" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="120" y1="192" x2="150" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
       {/* 정강이 */}
-      <g className="sq-shin-l">
-        <line x1="105" y1="160" x2="105" y2="185" {...style} />
+      <g className={`${id}-shin-l`}>
+        <Bone x1={105} y1={165} x2={105} y2={192} w={11} />
+        <Joint cx={105} cy={165} r={5} />
       </g>
-      <g className="sq-shin-r">
-        <line x1="135" y1="160" x2="135" y2="185" {...style} />
+      <g className={`${id}-shin-r`}>
+        <Bone x1={135} y1={165} x2={135} y2={192} w={11} />
+        <Joint cx={135} cy={165} r={5} />
       </g>
-      {/* 몸통·허벅지 (같이 움직임) */}
-      <g className="sq-body">
-        <g className="sq-thigh-l">
-          <line x1="105" y1="130" x2="105" y2="160" {...style} />
+
+      {/* 상체(몸통 + 허벅지) */}
+      <g className={`${id}-body`}>
+        <g className={`${id}-thigh-l`}>
+          <Bone x1={108} y1={128} x2={105} y2={165} w={13} />
         </g>
-        <g className="sq-thigh-r">
-          <line x1="135" y1="130" x2="135" y2="160" {...style} />
+        <g className={`${id}-thigh-r`}>
+          <Bone x1={132} y1={128} x2={135} y2={165} w={13} />
         </g>
-        <line x1="105" y1="130" x2="135" y2="130" {...style} />
-        <line x1="120" y1="130" x2="120" y2="90" {...style} />
-        <circle cx="120" cy="80" r="10" fill={BODY} />
-        {/* 어깨 바벨 */}
-        <line x1="90" y1="90" x2="150" y2="90" {...barStyle} strokeWidth={5} />
-        <circle cx="90" cy="90" r="7" {...gearStyle} />
-        <circle cx="150" cy="90" r="7" {...gearStyle} />
+        <MuscleGlow cx={120} cy={148} r={20} className={`${id}-glow`} id={id} />
+        <Torso cx={120} cyTop={80} cyBottom={130} wShoulder={40} wHip={30} id={id} />
+        <Head cx={120} cy={68} r={11} id={id + '2'} />
+
+        {/* 어깨 위 바벨 */}
+        <line x1="102" y1="82" x2="138" y2="82" stroke={GEAR_METAL} strokeWidth={3} />
+        <Barbell x1={80} x2={160} y={80} plate={10} id={id} />
       </g>
+
+      <MotionArrow x={195} y={140} direction="down" size={8} />
     </>
   );
 }
 
 function DeadliftFigure() {
+  const id = 'dl';
   return (
     <>
       <style>{`
-        @keyframes dlBody { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-45deg); } }
-        @keyframes dlBar { 0%,100% { transform: translateY(0); } 50% { transform: translateY(40px); } }
-        .dl-body { animation: dlBody 1.8s ease-in-out infinite; transform-origin: 120px 155px; }
-        .dl-bar { animation: dlBar 1.8s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: rotate(0deg) translateY(0); } 50% { transform: rotate(-55deg) translateY(10px); } }
+        @keyframes ${id}-bar  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(50px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.7); opacity: 0.25; } 50% { transform: scale(1.3); opacity: 0.8; } }
+        .${id}-body { animation: ${id}-body 2s ease-in-out infinite; transform-origin: 120px 155px; }
+        .${id}-bar  { animation: ${id}-bar 2s ease-in-out infinite; }
+        .${id}-glow-back { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 120px 130px; }
+        .${id}-glow-ham  { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 120px 170px; }
       `}</style>
+
+      <Ground y={192} />
+
       {/* 다리 */}
-      <line x1="120" y1="155" x2="105" y2="185" {...style} />
-      <line x1="120" y1="155" x2="135" y2="185" {...style} />
-      {/* 몸통 */}
-      <g className="dl-body">
-        <line x1="120" y1="155" x2="120" y2="95" {...style} />
-        <circle cx="120" cy="85" r="10" fill={BODY} />
-        {/* 팔 (아래로) */}
-        <line x1="120" y1="105" x2="120" y2="150" {...style} strokeDasharray="0" />
+      <Bone x1={110} y1={155} x2={100} y2={192} w={13} />
+      <Bone x1={130} y1={155} x2={140} y2={192} w={13} />
+      <line x1="93" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="155" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <MuscleGlow cx={120} cy={170} r={16} className={`${id}-glow-ham`} id={id} />
+
+      {/* 상체 (움직임) */}
+      <g className={`${id}-body`}>
+        <Torso cx={120} cyTop={95} cyBottom={155} wShoulder={40} wHip={30} id={id} />
+        <Head cx={120} cy={85} r={11} id={id + '2'} />
+        <MuscleGlow cx={120} cy={125} r={18} className={`${id}-glow-back`} id={id} />
+        {/* 팔 아래로 (곧게) */}
+        <Bone x1={104} y1={105} x2={100} y2={150} w={9} />
+        <Bone x1={136} y1={105} x2={140} y2={150} w={9} />
       </g>
+
       {/* 바 (움직임) */}
-      <g className="dl-bar">
-        <line x1="80" y1="150" x2="160" y2="150" {...barStyle} strokeWidth={5} />
-        <circle cx="80" cy="150" r="9" {...gearStyle} />
-        <circle cx="160" cy="150" r="9" {...gearStyle} />
+      <g className={`${id}-bar`}>
+        <Barbell x1={70} x2={170} y={150} plate={11} id={id} />
+        <MotionArrow x={195} y={130} direction="up" size={9} />
       </g>
     </>
   );
 }
 
 function HipThrustFigure() {
+  const id = 'ht';
   return (
     <>
       <style>{`
-        @keyframes htHip { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-25px); } }
-        .ht-body { animation: htHip 1.6s ease-in-out infinite; }
+        @keyframes ${id}-hips { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.25; } 50% { transform: scale(1.4); opacity: 0.85; } }
+        .${id}-body { animation: ${id}-hips 1.8s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 1.8s ease-in-out infinite; transform-origin: 130px 135px; }
       `}</style>
-      {/* 벤치 */}
-      <rect x="140" y="110" width="80" height="8" fill={GEAR} rx="2" />
-      {/* 발 */}
-      <line x1="30" y1="180" x2="50" y2="180" {...style} strokeWidth={4} />
-      {/* 정강이 */}
-      <line x1="40" y1="180" x2="80" y2="150" {...style} />
-      {/* 몸통 (움직임) */}
-      <g className="ht-body">
-        <line x1="80" y1="150" x2="150" y2="130" {...style} />
-        <line x1="150" y1="130" x2="180" y2="115" {...style} />
-        <circle cx="185" cy="110" r="10" fill={BODY} />
-        {/* 어깨 바벨 */}
-        <line x1="95" y1="145" x2="130" y2="135" {...barStyle} strokeWidth={5} />
-        <circle cx="95" cy="145" r="7" {...gearStyle} />
-        <circle cx="130" cy="135" r="7" {...gearStyle} />
+
+      <Ground y={192} />
+      {/* 벤치 (어깨) */}
+      <rect x="150" y="105" width="80" height="10" fill="#4A5568" rx={2} stroke={BODY_DARK} strokeWidth={1} />
+
+      {/* 발 (고정) */}
+      <line x1="25" y1="192" x2="55" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      {/* 정강이 (고정) */}
+      <Bone x1={40} y1={192} x2={80} y2={150} w={13} />
+      <Joint cx={80} cy={150} r={5} />
+
+      {/* 상체·허벅지 (움직임) */}
+      <g className={`${id}-body`}>
+        <Bone x1={80} y1={150} x2={155} y2={140} w={16} color={BODY} />
+        <MuscleGlow cx={130} cy={140} r={22} className={`${id}-glow`} id={id} />
+        {/* 상체 */}
+        <path
+          d={`M 145 128 L 195 118 L 200 128 L 148 138 Z`}
+          fill={`url(#${id}-body)`}
+          stroke={BODY_DARK}
+          strokeWidth={1.5}
+        />
+        <Head cx={200} cy={112} r={11} id={id + '2'} />
+
+        {/* 어깨 위 바벨 */}
+        <Barbell x1={90} x2={155} y={140} plate={9} id={id} />
       </g>
+
+      <MotionArrow x={215} y={70} direction="up" size={8} />
     </>
   );
 }
 
 function RowFigure() {
+  const id = 'row';
   return (
     <>
       <style>{`
-        @keyframes rowFore { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
-        @keyframes rowBar { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-40px); } }
-        .row-arm { animation: rowFore 1.4s ease-in-out infinite; transform-origin: 130px 110px; }
-        .row-bar { animation: rowBar 1.4s ease-in-out infinite; }
+        @keyframes ${id}-ua { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+        @keyframes ${id}-bar { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-40px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.25; } 50% { transform: scale(1.4); opacity: 0.85; } }
+        .${id}-arm { animation: ${id}-ua 1.5s ease-in-out infinite; transform-origin: 135px 120px; }
+        .${id}-bar { animation: ${id}-bar 1.5s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 1.5s ease-in-out infinite; transform-origin: 145px 105px; }
       `}</style>
-      {/* 다리 */}
-      <line x1="110" y1="145" x2="90" y2="185" {...style} />
-      <line x1="110" y1="145" x2="130" y2="185" {...style} />
-      {/* 몸통 (구부린) */}
-      <line x1="110" y1="145" x2="150" y2="110" {...style} />
-      <circle cx="160" cy="103" r="10" fill={BODY} />
+
+      <Ground y={192} />
+
+      {/* 다리 (구부린 자세) */}
+      <Bone x1={110} y1={145} x2={95} y2={175} w={12} />
+      <Bone x1={95} y1={175} x2={90} y2={192} w={11} />
+      <Bone x1={120} y1={145} x2={130} y2={175} w={12} />
+      <Bone x1={130} y1={175} x2={135} y2={192} w={11} />
+      <line x1="80" y1="192" x2="105" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="125" y1="192" x2="150" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      {/* 몸통 (앞으로 숙임) */}
+      <path
+        d={`M 100 145 L 175 105 L 185 118 L 108 155 Z`}
+        fill={`url(#${id}-body)`}
+        stroke={BODY_DARK}
+        strokeWidth={1.5}
+      />
+      <MuscleGlow cx={145} cy={105} r={20} className={`${id}-glow`} id={id} />
+      <Head cx={185} cy={98} r={11} id={id} />
+
       {/* 팔 */}
-      <g className="row-arm">
-        <line x1="130" y1="110" x2="150" y2="150" {...style} />
+      <g className={`${id}-arm`}>
+        <Bone x1={135} y1={120} x2={140} y2={160} w={9} />
       </g>
+
       {/* 바 */}
-      <g className="row-bar">
-        <line x1="115" y1="155" x2="185" y2="155" {...barStyle} strokeWidth={5} />
-        <circle cx="115" cy="155" r="8" {...gearStyle} />
-        <circle cx="185" cy="155" r="8" {...gearStyle} />
+      <g className={`${id}-bar`}>
+        <Barbell x1={100} x2={180} y={165} plate={9} id={id} />
+        <MotionArrow x={130} y={140} direction="up" size={8} />
       </g>
     </>
   );
 }
 
 function PullupFigure() {
+  const id = 'pu';
   return (
     <>
       <style>{`
-        @keyframes puBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-25px); } }
-        .pu-body { animation: puBody 1.8s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-32px); } }
+        @keyframes ${id}-ua { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(45deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.25; } 50% { transform: scale(1.5); opacity: 0.85; } }
+        .${id}-body { animation: ${id}-body 2s ease-in-out infinite; }
+        .${id}-ua-l { animation: ${id}-ua 2s ease-in-out infinite; transform-origin: 92px 40px; }
+        .${id}-ua-r { animation: ${id}-ua 2s ease-in-out infinite; transform-origin: 148px 40px; }
+        .${id}-glow { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 120px 90px; }
       `}</style>
-      {/* 봉 */}
-      <line x1="60" y1="30" x2="180" y2="30" {...barStyle} strokeWidth={5} />
-      {/* 몸통 (움직임) */}
-      <g className="pu-body">
-        {/* 팔 */}
-        <line x1="100" y1="30" x2="110" y2="80" {...style} />
-        <line x1="140" y1="30" x2="130" y2="80" {...style} />
+
+      {/* 봉 (고정) */}
+      <line x1="40" y1="30" x2="200" y2="30" stroke={GEAR_METAL} strokeWidth={5} strokeLinecap="round" />
+      <line x1="40" y1="25" x2="40" y2="10" stroke={GEAR_DARK} strokeWidth={3} />
+      <line x1="200" y1="25" x2="200" y2="10" stroke={GEAR_DARK} strokeWidth={3} />
+
+      {/* 손목 (봉 고정) */}
+      <circle cx="92" cy="35" r="4" fill={SKIN} />
+      <circle cx="148" cy="35" r="4" fill={SKIN} />
+
+      {/* 상완 (몸이 올라올 때 팔꿈치 굽힘) */}
+      <g className={`${id}-body`}>
+        <g className={`${id}-ua-l`}>
+          <Bone x1={92} y1={40} x2={102} y2={85} w={9} />
+        </g>
+        <g className={`${id}-ua-r`}>
+          <Bone x1={148} y1={40} x2={138} y2={85} w={9} />
+        </g>
         {/* 몸통 */}
-        <line x1="120" y1="80" x2="120" y2="140" {...style} />
-        <circle cx="120" cy="70" r="10" fill={BODY} />
-        {/* 다리 */}
-        <line x1="120" y1="140" x2="105" y2="175" {...style} />
-        <line x1="120" y1="140" x2="135" y2="175" {...style} />
+        <Torso cx={120} cyTop={85} cyBottom={145} wShoulder={40} wHip={30} id={id} />
+        <Head cx={120} cy={73} r={11} id={id + '2'} />
+        <MuscleGlow cx={120} cy={100} r={20} className={`${id}-glow`} id={id} />
+        {/* 다리 (꼬임) */}
+        <Bone x1={112} y1={145} x2={100} y2={185} w={11} />
+        <Bone x1={128} y1={145} x2={140} y2={185} w={11} />
       </g>
+
+      <MotionArrow x={215} y={90} direction="up" size={8} />
     </>
   );
 }
 
 function BicepsCurlFigure() {
+  const id = 'bc';
   return (
     <>
       <style>{`
-        @keyframes bcFore { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-140deg); } }
-        .bc-fore { animation: bcFore 1.4s ease-in-out infinite; transform-origin: 120px 100px; }
+        @keyframes ${id}-fa { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-135deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        @keyframes ${id}-arrow { 0%,100% { transform: translateY(0); opacity: 0; } 30%,70% { opacity: 1; } 50% { transform: translateY(-30px); } }
+        .${id}-fa-l { animation: ${id}-fa 1.4s ease-in-out infinite; transform-origin: 100px 105px; }
+        .${id}-fa-r { animation: ${id}-fa 1.4s ease-in-out infinite; transform-origin: 140px 105px; }
+        .${id}-glow-l { animation: ${id}-glow 1.4s ease-in-out infinite; transform-origin: 100px 92px; }
+        .${id}-glow-r { animation: ${id}-glow 1.4s ease-in-out infinite; transform-origin: 140px 92px; }
+        .${id}-arrow { animation: ${id}-arrow 1.4s ease-in-out infinite; }
       `}</style>
+
+      <Ground y={192} />
+
       {/* 다리 */}
-      <line x1="120" y1="150" x2="105" y2="190" {...style} />
-      <line x1="120" y1="150" x2="135" y2="190" {...style} />
+      <Bone x1={112} y1={150} x2={102} y2={192} w={12} />
+      <Bone x1={128} y1={150} x2={138} y2={192} w={12} />
+      <line x1="95" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="153" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
       {/* 몸통 */}
-      <line x1="120" y1="70" x2="120" y2="150" {...style} />
-      <circle cx="120" cy="60" r="10" fill={BODY} />
-      {/* 상완 */}
-      <line x1="120" y1="80" x2="120" y2="120" {...style} />
+      <Torso cx={120} cyTop={75} cyBottom={150} wShoulder={40} wHip={30} id={id} />
+      <Head cx={120} cy={63} r={11} id={id + '2'} />
+
+      {/* 상완 (고정, 몸통 옆) */}
+      <Bone x1={100} y1={80} x2={100} y2={105} w={9} />
+      <Bone x1={140} y1={80} x2={140} y2={105} w={9} />
+      <MuscleGlow cx={100} cy={92} r={12} className={`${id}-glow-l`} id={id} />
+      <MuscleGlow cx={140} cy={92} r={12} className={`${id}-glow-r`} id={id} />
+
       {/* 전완 (움직임) */}
-      <g className="bc-fore">
-        <line x1="120" y1="100" x2="140" y2="140" {...style} />
-        <circle cx="140" cy="140" r="10" {...gearStyle} />
+      <g className={`${id}-fa-r`}>
+        <Bone x1={140} y1={105} x2={140} y2={145} w={9} />
+        <g>
+          <Dumbbell cx={140} cy={148} size={7} />
+        </g>
+      </g>
+      <g className={`${id}-fa-l`}>
+        <Bone x1={100} y1={105} x2={100} y2={145} w={9} />
+        <g>
+          <Dumbbell cx={100} cy={148} size={7} />
+        </g>
+      </g>
+
+      <g className={`${id}-arrow`}>
+        <MotionArrow x={175} y={110} direction="up" size={9} />
       </g>
     </>
   );
 }
 
 function TricepsPushdownFigure() {
+  const id = 'tp';
   return (
     <>
       <style>{`
-        @keyframes tpFore { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(70deg); } }
-        .tp-fore { animation: tpFore 1.2s ease-in-out infinite; transform-origin: 130px 100px; }
+        @keyframes ${id}-fa { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(80deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.85; } }
+        .${id}-fa { animation: ${id}-fa 1.2s ease-in-out infinite; transform-origin: 130px 108px; }
+        .${id}-glow { animation: ${id}-glow 1.2s ease-in-out infinite; transform-origin: 128px 90px; }
       `}</style>
-      {/* 케이블 위 도르래 */}
-      <line x1="180" y1="20" x2="180" y2="80" stroke={GEAR} strokeWidth="1" />
-      <circle cx="180" cy="30" r="6" stroke={GEAR} strokeWidth={2} fill="none" />
+
+      <Ground y={192} />
+
+      {/* 도르래 */}
+      <rect x="180" y="15" width="20" height="12" fill="#4A5568" rx={2} />
+      <circle cx="190" cy="27" r="6" stroke={GEAR_METAL} strokeWidth={2} fill="none" />
+      <line x1="190" y1="33" x2="150" y2="108" stroke={GEAR_METAL} strokeWidth={1.5} />
+
       {/* 다리 */}
-      <line x1="120" y1="150" x2="105" y2="190" {...style} />
-      <line x1="120" y1="150" x2="135" y2="190" {...style} />
-      {/* 몸통 */}
-      <line x1="120" y1="70" x2="120" y2="150" {...style} />
-      <circle cx="120" cy="60" r="10" fill={BODY} />
-      {/* 상완 (팔꿈치 고정) */}
-      <line x1="120" y1="80" x2="130" y2="100" {...style} />
+      <Bone x1={112} y1={150} x2={102} y2={192} w={12} />
+      <Bone x1={128} y1={150} x2={138} y2={192} w={12} />
+      <line x1="95" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="153" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      <Torso cx={120} cyTop={75} cyBottom={150} wShoulder={40} wHip={30} id={id} />
+      <Head cx={120} cy={63} r={11} id={id + '2'} />
+
+      {/* 상완 (고정) */}
+      <Bone x1={130} y1={82} x2={130} y2={108} w={9} />
+      <MuscleGlow cx={128} cy={90} r={14} className={`${id}-glow`} id={id} />
+
       {/* 전완 (움직임) */}
-      <g className="tp-fore">
-        <line x1="130" y1="100" x2="150" y2="140" {...style} />
+      <g className={`${id}-fa`}>
+        <Bone x1={130} y1={108} x2={150} y2={148} w={9} />
+        {/* 손잡이 */}
+        <rect x="145" y="145" width="12" height="4" rx="1" fill={GEAR_METAL} />
       </g>
+
+      <MotionArrow x={165} y={140} direction="down" size={8} />
     </>
   );
 }
 
 function LateralRaiseFigure() {
+  const id = 'lr';
   return (
     <>
       <style>{`
-        @keyframes lrArm { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-85deg); } }
-        .lr-arm-l { animation: lrArm 1.4s ease-in-out infinite; transform-origin: 120px 85px; }
-        .lr-arm-r { animation: lrArm 1.4s ease-in-out infinite; transform-origin: 120px 85px; }
+        @keyframes ${id}-armL { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-88deg); } }
+        @keyframes ${id}-armR { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(88deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-arm-l { animation: ${id}-armL 1.5s ease-in-out infinite; transform-origin: 100px 82px; }
+        .${id}-arm-r { animation: ${id}-armR 1.5s ease-in-out infinite; transform-origin: 140px 82px; }
+        .${id}-glow-l { animation: ${id}-glow 1.5s ease-in-out infinite; transform-origin: 96px 80px; }
+        .${id}-glow-r { animation: ${id}-glow 1.5s ease-in-out infinite; transform-origin: 144px 80px; }
       `}</style>
-      {/* 다리·몸통 */}
-      <line x1="120" y1="150" x2="105" y2="190" {...style} />
-      <line x1="120" y1="150" x2="135" y2="190" {...style} />
-      <line x1="120" y1="75" x2="120" y2="150" {...style} />
-      <circle cx="120" cy="65" r="10" fill={BODY} />
-      {/* 팔 (좌우 대칭) */}
-      <g className="lr-arm-l" style={{ transform: 'scaleX(-1) rotate(0)', transformOrigin: '120px 85px' }}>
-        <line x1="120" y1="85" x2="120" y2="140" {...style} />
-        <circle cx="120" cy="140" r="8" {...gearStyle} />
+
+      <Ground y={192} />
+
+      <Bone x1={112} y1={150} x2={102} y2={192} w={12} />
+      <Bone x1={128} y1={150} x2={138} y2={192} w={12} />
+      <line x1="95" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="153" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      <Torso cx={120} cyTop={72} cyBottom={150} wShoulder={40} wHip={30} id={id} />
+      <Head cx={120} cy={60} r={11} id={id + '2'} />
+
+      <MuscleGlow cx={96} cy={80} r={14} className={`${id}-glow-l`} id={id} />
+      <MuscleGlow cx={144} cy={80} r={14} className={`${id}-glow-r`} id={id} />
+
+      {/* 팔 (좌우 대칭 벌리기) */}
+      <g className={`${id}-arm-l`}>
+        <Bone x1={100} y1={82} x2={100} y2={135} w={9} />
+        <Dumbbell cx={100} cy={140} size={7} />
       </g>
-      <g className="lr-arm-r">
-        <line x1="120" y1="85" x2="120" y2="140" {...style} />
-        <circle cx="120" cy="140" r="8" {...gearStyle} />
+      <g className={`${id}-arm-r`}>
+        <Bone x1={140} y1={82} x2={140} y2={135} w={9} />
+        <Dumbbell cx={140} cy={140} size={7} />
       </g>
+
+      <MotionArrow x={40} y={100} direction="up" size={8} />
+      <MotionArrow x={200} y={100} direction="up" size={8} />
     </>
   );
 }
 
 function FrontRaiseFigure() {
+  const id = 'fr';
   return (
     <>
       <style>{`
-        @keyframes frArm { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
-        .fr-arm { animation: frArm 1.4s ease-in-out infinite; transform-origin: 120px 85px; }
+        @keyframes ${id}-arm { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-95deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.85; } }
+        .${id}-arm { animation: ${id}-arm 1.5s ease-in-out infinite; transform-origin: 120px 82px; }
+        .${id}-glow { animation: ${id}-glow 1.5s ease-in-out infinite; transform-origin: 118px 80px; }
       `}</style>
-      {/* 다리·몸통 */}
-      <line x1="120" y1="150" x2="105" y2="190" {...style} />
-      <line x1="120" y1="150" x2="135" y2="190" {...style} />
-      <line x1="120" y1="75" x2="120" y2="150" {...style} />
-      <circle cx="120" cy="65" r="10" fill={BODY} />
-      {/* 팔 */}
-      <g className="fr-arm">
-        <line x1="120" y1="85" x2="160" y2="130" {...style} />
-        <circle cx="160" cy="130" r="8" {...gearStyle} />
+
+      <Ground y={192} />
+
+      <Bone x1={112} y1={150} x2={102} y2={192} w={12} />
+      <Bone x1={128} y1={150} x2={138} y2={192} w={12} />
+      <line x1="95" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+      <line x1="133" y1="192" x2="153" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+      <Torso cx={120} cyTop={72} cyBottom={150} wShoulder={40} wHip={30} id={id} />
+      <Head cx={120} cy={60} r={11} id={id + '2'} />
+      <MuscleGlow cx={118} cy={80} r={14} className={`${id}-glow`} id={id} />
+
+      <g className={`${id}-arm`}>
+        <Bone x1={120} y1={82} x2={165} y2={130} w={9} />
+        <Dumbbell cx={168} cy={132} size={7} />
       </g>
+
+      <MotionArrow x={195} y={80} direction="up" size={8} />
     </>
   );
 }
 
 function FlyFigure() {
+  const id = 'fly';
   return (
     <>
       <style>{`
-        @keyframes flyArmL { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-60deg); } }
-        @keyframes flyArmR { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(60deg); } }
-        .fly-arm-l { animation: flyArmL 1.6s ease-in-out infinite; transform-origin: 120px 100px; }
-        .fly-arm-r { animation: flyArmR 1.6s ease-in-out infinite; transform-origin: 120px 100px; }
+        @keyframes ${id}-armL { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-70deg); } }
+        @keyframes ${id}-armR { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(70deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.5); opacity: 0.15; } 50% { transform: scale(1.4); opacity: 0.9; } }
+        .${id}-arm-l { animation: ${id}-armL 1.8s ease-in-out infinite; transform-origin: 120px 105px; }
+        .${id}-arm-r { animation: ${id}-armR 1.8s ease-in-out infinite; transform-origin: 120px 105px; }
+        .${id}-glow { animation: ${id}-glow 1.8s ease-in-out infinite; transform-origin: 120px 100px; }
       `}</style>
-      {/* 몸통 (누운 자세) */}
-      <rect x="60" y="115" width="140" height="6" fill={GEAR} rx="2" />
-      <line x1="80" y1="108" x2="150" y2="108" {...style} />
-      <circle cx="70" cy="105" r="8" fill={BODY} />
-      <line x1="150" y1="108" x2="180" y2="140" {...style} />
+
+      {/* 벤치 */}
+      <Bench x={40} y={120} w={140} />
+
+      {/* 다리 */}
+      <Bone x1={155} y1={105} x2={195} y2={140} w={10} />
+      <Bone x1={195} y1={140} x2={205} y2={180} w={10} />
+
+      {/* 몸통 (누움) */}
+      <path
+        d={`M 55 100 L 155 100 L 155 112 L 55 112 Z`}
+        fill={`url(#${id}-body)`}
+        stroke={BODY_DARK}
+        strokeWidth={1.5}
+      />
+      <Head cx={40} cy={100} r={11} id={id} />
+
+      <MuscleGlow cx={110} cy={98} r={26} className={`${id}-glow`} id={id} />
+
       {/* 팔 */}
-      <g className="fly-arm-l">
-        <line x1="120" y1="100" x2="80" y2="70" {...style} />
-        <circle cx="80" cy="70" r="8" {...gearStyle} />
+      <g className={`${id}-arm-l`}>
+        <Bone x1={120} y1={105} x2={80} y2={65} w={9} />
+        <Dumbbell cx={78} cy={62} size={7} />
       </g>
-      <g className="fly-arm-r">
-        <line x1="120" y1="100" x2="160" y2="70" {...style} />
-        <circle cx="160" cy="70" r="8" {...gearStyle} />
+      <g className={`${id}-arm-r`}>
+        <Bone x1={120} y1={105} x2={160} y2={65} w={9} />
+        <Dumbbell cx={162} cy={62} size={7} />
       </g>
     </>
   );
 }
 
 function LungeFigure() {
+  const id = 'lg';
   return (
     <>
       <style>{`
-        @keyframes lgBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(20px); } }
-        .lg-body { animation: lgBody 1.8s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(22px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.3); opacity: 0.85; } }
+        .${id}-body { animation: ${id}-body 2s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 85px 155px; }
       `}</style>
-      <g className="lg-body">
+
+      <Ground y={192} />
+      <g className={`${id}-body`}>
         {/* 앞다리 (굽힘) */}
-        <line x1="90" y1="130" x2="70" y2="170" {...style} />
-        <line x1="70" y1="170" x2="70" y2="190" {...style} />
-        <line x1="60" y1="190" x2="90" y2="190" {...style} strokeWidth={4} />
+        <Bone x1={100} y1={130} x2={80} y2={165} w={13} />
+        <Bone x1={80} y1={165} x2={78} y2={192} w={12} />
+        <line x1="65" y1="192" x2="95" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+        <MuscleGlow cx={85} cy={155} r={16} className={`${id}-glow`} id={id} />
+
         {/* 뒷다리 (뒤로 뻗음) */}
-        <line x1="90" y1="130" x2="160" y2="170" {...style} />
-        <line x1="160" y1="170" x2="180" y2="190" {...style} />
-        <line x1="170" y1="190" x2="195" y2="190" {...style} strokeWidth={4} />
+        <Bone x1={100} y1={130} x2={155} y2={165} w={12} />
+        <Bone x1={155} y1={165} x2={185} y2={192} w={11} />
+        <line x1="170" y1="192" x2="200" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
         {/* 몸통 */}
-        <line x1="90" y1="130" x2="90" y2="80" {...style} />
-        <circle cx="90" cy="70" r="10" fill={BODY} />
+        <Torso cx={100} cyTop={70} cyBottom={130} wShoulder={36} wHip={26} id={id} />
+        <Head cx={100} cy={58} r={11} id={id + '2'} />
+
         {/* 어깨 바벨 */}
-        <line x1="65" y1="80" x2="120" y2="80" {...barStyle} strokeWidth={5} />
-        <circle cx="65" cy="80" r="6" {...gearStyle} />
-        <circle cx="120" cy="80" r="6" {...gearStyle} />
+        <Barbell x1={65} x2={135} y={70} plate={9} id={id} />
       </g>
     </>
   );
 }
 
 function LegExtFigure() {
+  const id = 'le';
   return (
     <>
       <style>{`
-        @keyframes leShin { 0%,100% { transform: rotate(90deg); } 50% { transform: rotate(0deg); } }
-        .le-shin { animation: leShin 1.4s ease-in-out infinite; transform-origin: 120px 130px; }
+        @keyframes ${id}-shin { 0%,100% { transform: rotate(80deg); } 50% { transform: rotate(0deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-shin { animation: ${id}-shin 1.4s ease-in-out infinite; transform-origin: 130px 130px; }
+        .${id}-glow { animation: ${id}-glow 1.4s ease-in-out infinite; transform-origin: 100px 125px; }
       `}</style>
-      {/* 벤치 */}
-      <rect x="30" y="130" width="100" height="8" fill={GEAR} rx="2" />
+
+      {/* 머신 프레임 */}
+      <rect x="30" y="130" width="110" height="12" fill="#4A5568" rx={2} stroke={BODY_DARK} strokeWidth={1} />
+      <rect x="20" y="70" width="15" height="70" fill="#374151" />
+      <rect x="20" y="65" width="30" height="8" fill="#374151" />
+
       {/* 몸통 (앉음) */}
-      <line x1="60" y1="125" x2="60" y2="80" {...style} />
-      <circle cx="60" cy="70" r="10" fill={BODY} />
+      <Torso cx={55} cyTop={75} cyBottom={130} wShoulder={34} wHip={30} id={id} />
+      <Head cx={55} cy={63} r={11} id={id + '2'} />
+
       {/* 팔 */}
-      <line x1="60" y1="90" x2="90" y2="120" {...style} />
+      <Bone x1={40} y1={85} x2={30} y2={120} w={9} />
+      <Bone x1={70} y1={85} x2={80} y2={120} w={9} />
+
       {/* 허벅지 */}
-      <line x1="60" y1="125" x2="120" y2="130" {...style} />
+      <Bone x1={60} y1={130} x2={130} y2={130} w={13} />
+      <MuscleGlow cx={100} cy={125} r={18} className={`${id}-glow`} id={id} />
+
       {/* 정강이 (움직임) */}
-      <g className="le-shin">
-        <line x1="120" y1="130" x2="150" y2="130" {...style} />
-        <circle cx="150" cy="130" r="8" {...gearStyle} />
+      <g className={`${id}-shin`}>
+        <Bone x1={130} y1={130} x2={160} y2={130} w={11} />
+        <circle cx={162} cy={130} r={6} fill={GEAR_METAL} />
       </g>
+
+      <MotionArrow x={195} y={100} direction="up" size={8} />
     </>
   );
 }
 
 function LegCurlFigure() {
+  const id = 'lc';
   return (
     <>
       <style>{`
-        @keyframes lcShin { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
-        .lc-shin { animation: lcShin 1.4s ease-in-out infinite; transform-origin: 120px 100px; }
+        @keyframes ${id}-shin { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-95deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-shin { animation: ${id}-shin 1.4s ease-in-out infinite; transform-origin: 130px 105px; }
+        .${id}-glow { animation: ${id}-glow 1.4s ease-in-out infinite; transform-origin: 100px 95px; }
       `}</style>
+
       {/* 벤치 */}
-      <rect x="30" y="100" width="140" height="8" fill={GEAR} rx="2" />
-      {/* 몸통 (엎드림) */}
-      <circle cx="35" cy="95" r="10" fill={BODY} />
-      <line x1="45" y1="95" x2="120" y2="95" {...style} />
+      <rect x="20" y="100" width="140" height="12" fill="#4A5568" rx={2} stroke={BODY_DARK} strokeWidth={1} />
+
+      {/* 머리 · 몸통 (엎드림) */}
+      <Head cx={30} cy={95} r={11} id={id} />
+      <rect x="42" y="88" width="80" height="12" fill={`url(#${id}-body)`} stroke={BODY_DARK} strokeWidth={1.5} rx={3} />
+
       {/* 허벅지 */}
-      <line x1="120" y1="100" x2="120" y2="100" {...style} />
+      <Bone x1={120} y1={95} x2={135} y2={100} w={13} />
+      <MuscleGlow cx={110} cy={95} r={16} className={`${id}-glow`} id={id} />
+
       {/* 정강이 (움직임) */}
-      <g className="lc-shin">
-        <line x1="120" y1="100" x2="170" y2="100" {...style} />
-        <circle cx="170" cy="100" r="8" {...gearStyle} />
+      <g className={`${id}-shin`}>
+        <Bone x1={130} y1={105} x2={185} y2={105} w={11} />
+        <circle cx={190} cy={105} r={6} fill={GEAR_METAL} />
       </g>
+
+      <MotionArrow x={200} y={70} direction="up" size={8} />
     </>
   );
 }
 
 function CalfRaiseFigure() {
+  const id = 'cr';
   return (
     <>
       <style>{`
-        @keyframes crBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        .cr-body { animation: crBody 1.2s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-body { animation: ${id}-body 1.2s ease-in-out infinite; }
+        .${id}-glow-l { animation: ${id}-glow 1.2s ease-in-out infinite; transform-origin: 110px 170px; }
+        .${id}-glow-r { animation: ${id}-glow 1.2s ease-in-out infinite; transform-origin: 130px 170px; }
       `}</style>
-      <g className="cr-body">
-        {/* 몸통·다리 */}
-        <circle cx="120" cy="55" r="10" fill={BODY} />
-        <line x1="120" y1="65" x2="120" y2="180" {...style} />
-        {/* 발 (뒤꿈치 든 상태) */}
-        <line x1="115" y1="180" x2="140" y2="180" {...style} strokeWidth={4} />
-        {/* 어깨 바벨 */}
-        <line x1="95" y1="80" x2="150" y2="80" {...barStyle} strokeWidth={5} />
-        <circle cx="95" cy="80" r="7" {...gearStyle} />
-        <circle cx="150" cy="80" r="7" {...gearStyle} />
-      </g>
+
+      <Ground y={192} />
       {/* 발판 */}
-      <rect x="90" y="180" width="60" height="6" fill={GEAR} rx="2" />
+      <rect x="90" y="187" width="60" height="8" fill="#4A5568" rx={2} />
+
+      <g className={`${id}-body`}>
+        <Head cx={120} cy={45} r={11} id={id + '2'} />
+        <Torso cx={120} cyTop={55} cyBottom={130} wShoulder={40} wHip={30} id={id} />
+
+        {/* 다리 */}
+        <Bone x1={112} y1={130} x2={110} y2={180} w={11} />
+        <Bone x1={128} y1={130} x2={130} y2={180} w={11} />
+        <MuscleGlow cx={110} cy={170} r={12} className={`${id}-glow-l`} id={id} />
+        <MuscleGlow cx={130} cy={170} r={12} className={`${id}-glow-r`} id={id} />
+
+        {/* 발 (뒤꿈치 든 상태) */}
+        <line x1="108" y1="187" x2="128" y2="187" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
+        {/* 어깨 바벨 */}
+        <Barbell x1={80} x2={160} y={60} plate={9} id={id} />
+      </g>
+
+      <MotionArrow x={175} y={140} direction="up" size={8} />
     </>
   );
 }
 
 function CrunchFigure() {
+  const id = 'cn';
   return (
     <>
       <style>{`
-        @keyframes cnBody { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(35deg); } }
-        .cn-body { animation: cnBody 1.4s ease-in-out infinite; transform-origin: 120px 155px; }
+        @keyframes ${id}-body { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(45deg); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-body { animation: ${id}-body 1.4s ease-in-out infinite; transform-origin: 130px 155px; }
+        .${id}-glow { animation: ${id}-glow 1.4s ease-in-out infinite; transform-origin: 110px 145px; }
       `}</style>
-      {/* 바닥 */}
-      <line x1="30" y1="185" x2="210" y2="185" stroke={GEAR} strokeWidth={2} />
-      {/* 무릎 */}
-      <line x1="120" y1="155" x2="160" y2="140" {...style} />
-      <line x1="160" y1="140" x2="180" y2="180" {...style} />
+
+      <Ground y={185} />
+
+      {/* 다리 (무릎 굽힘) */}
+      <Bone x1={130} y1={155} x2={170} y2={135} w={13} />
+      <Bone x1={170} y1={135} x2={195} y2={185} w={12} />
+      <line x1="180" y1="185" x2="210" y2="185" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
       {/* 상체 (움직임) */}
-      <g className="cn-body">
-        <line x1="120" y1="155" x2="90" y2="130" {...style} />
-        <circle cx="80" cy="123" r="10" fill={BODY} />
+      <g className={`${id}-body`}>
+        <MuscleGlow cx={110} cy={145} r={20} className={`${id}-glow`} id={id} />
+        <path
+          d={`M 130 155 L 130 145 L 60 145 L 60 155 Z`}
+          fill={`url(#${id}-body)`}
+          stroke={BODY_DARK}
+          strokeWidth={1.5}
+        />
+        <Head cx={50} cy={145} r={11} id={id} />
         {/* 팔 (머리 뒤) */}
-        <line x1="80" y1="115" x2="70" y2="105" {...style} />
+        <Bone x1={55} y1={140} x2={40} y2={130} w={8} />
       </g>
     </>
   );
 }
 
 function PlankFigure() {
+  const id = 'pl';
   return (
     <>
       <style>{`
-        @keyframes plPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.8; } }
-        .pl { animation: plPulse 1.8s ease-in-out infinite; }
+        @keyframes ${id}-shake { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.9); opacity: 0.4; } 50% { transform: scale(1.2); opacity: 0.9; } }
+        .${id}-body { animation: ${id}-shake 2s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 2s ease-in-out infinite; transform-origin: 130px 145px; }
       `}</style>
-      <g className="pl">
-        <line x1="30" y1="185" x2="210" y2="185" stroke={GEAR} strokeWidth={2} />
-        {/* 몸통 */}
-        <line x1="50" y1="140" x2="200" y2="140" {...style} />
-        <circle cx="205" cy="135" r="10" fill={BODY} />
-        {/* 팔 */}
-        <line x1="70" y1="140" x2="70" y2="175" {...style} />
-        <line x1="70" y1="175" x2="90" y2="175" {...style} />
+
+      <Ground y={185} />
+
+      <g className={`${id}-body`}>
+        {/* 몸통 (수평 판자) */}
+        <rect x="60" y="140" width="140" height="12" fill={`url(#${id}-body)`} stroke={BODY_DARK} strokeWidth={1.5} rx={3} />
+        <MuscleGlow cx={130} cy={145} r={24} className={`${id}-glow`} id={id} />
+
+        {/* 머리 */}
+        <Head cx={210} cy={140} r={11} id={id} />
+
+        {/* 팔 (팔꿈치 지지) */}
+        <Bone x1={80} y1={145} x2={80} y2={178} w={9} />
+        <line x1="70" y1="183" x2="95" y2="183" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
         {/* 다리 */}
-        <line x1="180" y1="140" x2="180" y2="175" {...style} />
-        <line x1="170" y1="175" x2="195" y2="175" {...style} strokeWidth={4} />
+        <Bone x1={175} y1={145} x2={175} y2={178} w={11} />
+        <line x1="163" y1="183" x2="188" y2="183" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
       </g>
     </>
   );
 }
 
 function RunningFigure() {
+  const id = 'run';
   return (
     <>
       <style>{`
-        @keyframes runLegL { 0%,100% { transform: rotate(-20deg); } 50% { transform: rotate(30deg); } }
-        @keyframes runLegR { 0%,100% { transform: rotate(30deg); } 50% { transform: rotate(-20deg); } }
-        @keyframes runArmL { 0%,100% { transform: rotate(30deg); } 50% { transform: rotate(-30deg); } }
-        @keyframes runArmR { 0%,100% { transform: rotate(-30deg); } 50% { transform: rotate(30deg); } }
-        @keyframes runBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        .run-body { animation: runBody 0.6s ease-in-out infinite; }
-        .run-leg-l { animation: runLegL 0.6s ease-in-out infinite; transform-origin: 120px 140px; }
-        .run-leg-r { animation: runLegR 0.6s ease-in-out infinite; transform-origin: 120px 140px; }
-        .run-arm-l { animation: runArmL 0.6s ease-in-out infinite; transform-origin: 120px 90px; }
-        .run-arm-r { animation: runArmR 0.6s ease-in-out infinite; transform-origin: 120px 90px; }
+        @keyframes ${id}-legL { 0%,100% { transform: rotate(-30deg); } 50% { transform: rotate(40deg); } }
+        @keyframes ${id}-legR { 0%,100% { transform: rotate(40deg); } 50% { transform: rotate(-30deg); } }
+        @keyframes ${id}-armL { 0%,100% { transform: rotate(40deg); } 50% { transform: rotate(-30deg); } }
+        @keyframes ${id}-armR { 0%,100% { transform: rotate(-30deg); } 50% { transform: rotate(40deg); } }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        .${id}-body { animation: ${id}-body 0.55s ease-in-out infinite; }
+        .${id}-leg-l { animation: ${id}-legL 0.55s ease-in-out infinite; transform-origin: 120px 138px; }
+        .${id}-leg-r { animation: ${id}-legR 0.55s ease-in-out infinite; transform-origin: 120px 138px; }
+        .${id}-arm-l { animation: ${id}-armL 0.55s ease-in-out infinite; transform-origin: 120px 90px; }
+        .${id}-arm-r { animation: ${id}-armR 0.55s ease-in-out infinite; transform-origin: 120px 90px; }
       `}</style>
-      <g className="run-body">
-        <circle cx="120" cy="75" r="10" fill={BODY} />
-        <line x1="120" y1="85" x2="120" y2="140" {...style} />
-        <g className="run-arm-l">
-          <line x1="120" y1="90" x2="120" y2="125" {...style} />
+
+      <Ground y={188} />
+
+      <g className={`${id}-body`}>
+        <Head cx={120} cy={70} r={11} id={id + '2'} />
+        <Torso cx={120} cyTop={80} cyBottom={138} wShoulder={32} wHip={26} id={id} />
+        <g className={`${id}-arm-l`}>
+          <Bone x1={120} y1={90} x2={115} y2={125} w={8} color="#334155" />
+          <Bone x1={115} y1={125} x2={130} y2={140} w={7} color="#334155" />
         </g>
-        <g className="run-arm-r">
-          <line x1="120" y1="90" x2="120" y2="125" {...style} />
+        <g className={`${id}-arm-r`}>
+          <Bone x1={120} y1={90} x2={125} y2={125} w={8} />
+          <Bone x1={125} y1={125} x2={110} y2={140} w={7} />
         </g>
-        <g className="run-leg-l">
-          <line x1="120" y1="140" x2="120" y2="185" {...style} />
+        <g className={`${id}-leg-l`}>
+          <Bone x1={120} y1={138} x2={110} y2={175} w={10} color="#334155" />
+          <Bone x1={110} y1={175} x2={100} y2={185} w={9} color="#334155" />
         </g>
-        <g className="run-leg-r">
-          <line x1="120" y1="140" x2="120" y2="185" {...style} />
+        <g className={`${id}-leg-r`}>
+          <Bone x1={120} y1={138} x2={130} y2={175} w={10} />
+          <Bone x1={130} y1={175} x2={140} y2={185} w={9} />
         </g>
       </g>
     </>
@@ -857,71 +1340,95 @@ function RunningFigure() {
 }
 
 function PushupFigure() {
+  const id = 'push';
   return (
     <>
       <style>{`
-        @keyframes pushBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(15px); } }
-        .push-body { animation: pushBody 1.6s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(18px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.4); opacity: 0.85; } }
+        .${id}-body { animation: ${id}-body 1.6s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 1.6s ease-in-out infinite; transform-origin: 140px 130px; }
       `}</style>
-      <line x1="30" y1="185" x2="210" y2="185" stroke={GEAR} strokeWidth={2} />
-      <g className="push-body">
-        {/* 몸통 */}
-        <line x1="50" y1="140" x2="190" y2="140" {...style} />
-        <circle cx="195" cy="135" r="10" fill={BODY} />
+
+      <Ground y={185} />
+
+      <g className={`${id}-body`}>
+        <Head cx={210} cy={130} r={11} id={id + '2'} />
+        <rect x="60" y="128" width="150" height="14" fill={`url(#${id}-body)`} stroke={BODY_DARK} strokeWidth={1.5} rx={3} />
+        <MuscleGlow cx={140} cy={128} r={24} className={`${id}-glow`} id={id} />
+
         {/* 팔 */}
-        <line x1="70" y1="140" x2="70" y2="180" {...style} />
+        <Bone x1={80} y1={135} x2={80} y2={178} w={10} />
+        <line x1="72" y1="183" x2="92" y2="183" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+
         {/* 다리 */}
-        <line x1="180" y1="140" x2="180" y2="180" {...style} />
+        <Bone x1={190} y1={135} x2={190} y2={178} w={11} />
+        <line x1="175" y1="183" x2="205" y2="183" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
       </g>
     </>
   );
 }
 
 function DipsFigure() {
+  const id = 'dips';
   return (
     <>
       <style>{`
-        @keyframes dipsBody { 0%,100% { transform: translateY(0); } 50% { transform: translateY(30px); } }
-        .dips-body { animation: dipsBody 1.6s ease-in-out infinite; }
+        @keyframes ${id}-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(28px); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.6); opacity: 0.2; } 50% { transform: scale(1.5); opacity: 0.9; } }
+        .${id}-body { animation: ${id}-body 1.6s ease-in-out infinite; }
+        .${id}-glow { animation: ${id}-glow 1.6s ease-in-out infinite; transform-origin: 120px 100px; }
       `}</style>
+
       {/* 딥스 바 */}
-      <line x1="60" y1="80" x2="60" y2="180" stroke={GEAR} strokeWidth={3} />
-      <line x1="180" y1="80" x2="180" y2="180" stroke={GEAR} strokeWidth={3} />
-      <line x1="60" y1="80" x2="80" y2="80" stroke={GEAR} strokeWidth={4} />
-      <line x1="180" y1="80" x2="160" y2="80" stroke={GEAR} strokeWidth={4} />
+      <line x1="55" y1="70" x2="55" y2="192" stroke={GEAR_DARK} strokeWidth={4} />
+      <line x1="185" y1="70" x2="185" y2="192" stroke={GEAR_DARK} strokeWidth={4} />
+      <line x1="45" y1="70" x2="75" y2="70" stroke={GEAR_METAL} strokeWidth={5} strokeLinecap="round" />
+      <line x1="165" y1="70" x2="195" y2="70" stroke={GEAR_METAL} strokeWidth={5} strokeLinecap="round" />
+
       {/* 몸 (움직임) */}
-      <g className="dips-body">
-        <line x1="80" y1="80" x2="80" y2="115" {...style} />
-        <line x1="160" y1="80" x2="160" y2="115" {...style} />
-        <line x1="80" y1="115" x2="120" y2="115" {...style} />
-        <line x1="160" y1="115" x2="120" y2="115" {...style} />
-        <circle cx="120" cy="105" r="10" fill={BODY} />
+      <g className={`${id}-body`}>
+        {/* 팔 */}
+        <Bone x1={65} y1={70} x2={90} y2={115} w={9} />
+        <Bone x1={175} y1={70} x2={150} y2={115} w={9} />
+        {/* 몸통 */}
+        <Torso cx={120} cyTop={95} cyBottom={148} wShoulder={40} wHip={30} id={id} />
+        <Head cx={120} cy={85} r={11} id={id + '2'} />
+        <MuscleGlow cx={120} cy={100} r={22} className={`${id}-glow`} id={id} />
         {/* 무릎 접힘 */}
-        <line x1="120" y1="125" x2="140" y2="150" {...style} />
-        <line x1="140" y1="150" x2="130" y2="175" {...style} />
+        <Bone x1={115} y1={148} x2={140} y2={175} w={11} />
+        <Bone x1={140} y1={175} x2={135} y2={195} w={10} />
       </g>
     </>
   );
 }
 
 function GenericFigure() {
+  const id = 'gn';
   return (
     <>
       <style>{`
-        @keyframes gnPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        .gn { animation: gnPulse 1.6s ease-in-out infinite; transform-origin: 120px 100px; }
+        @keyframes ${id}-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes ${id}-glow { 0%,100% { transform: scale(0.7); opacity: 0.3; } 50% { transform: scale(1.4); opacity: 0.85; } }
+        .${id}-body { animation: ${id}-pulse 1.6s ease-in-out infinite; transform-origin: 120px 130px; }
+        .${id}-glow { animation: ${id}-glow 1.6s ease-in-out infinite; transform-origin: 120px 120px; }
       `}</style>
-      <g className="gn">
-        <circle cx="120" cy="65" r="12" fill={BODY} />
-        <line x1="120" y1="77" x2="120" y2="150" {...style} />
-        <line x1="120" y1="95" x2="80" y2="130" {...style} />
-        <line x1="120" y1="95" x2="160" y2="130" {...style} />
-        <line x1="120" y1="150" x2="95" y2="190" {...style} />
-        <line x1="120" y1="150" x2="145" y2="190" {...style} />
+
+      <Ground y={192} />
+
+      <g className={`${id}-body`}>
+        <Head cx={120} cy={55} r={12} id={id + '2'} />
+        <Torso cx={120} cyTop={68} cyBottom={135} wShoulder={40} wHip={28} id={id} />
+        <MuscleGlow cx={120} cy={100} r={22} className={`${id}-glow`} id={id} />
+        {/* 팔 */}
+        <Bone x1={104} y1={75} x2={80} y2={125} w={9} />
+        <Bone x1={136} y1={75} x2={160} y2={125} w={9} />
+        {/* 다리 */}
+        <Bone x1={112} y1={135} x2={100} y2={188} w={11} />
+        <Bone x1={128} y1={135} x2={140} y2={188} w={11} />
+        <line x1="90" y1="192" x2="115" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
+        <line x1="130" y1="192" x2="155" y2="192" stroke={BODY_DARK} strokeWidth={5} strokeLinecap="round" />
       </g>
     </>
   );
 }
-
-// 오렌지 컬러 노드가 IDE에서 unused 로 안 뜨도록 참조
-void STROKE;
