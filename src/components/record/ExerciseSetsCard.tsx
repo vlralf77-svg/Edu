@@ -149,7 +149,7 @@ export default function ExerciseSetsCard({
         </Stack>
 
         {/* 새 세트 입력 */}
-        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1 }}>
+        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1.5 }}>
           <Chip
             size="small"
             label={`${block.sets.length + 1}세트`}
@@ -170,24 +170,52 @@ export default function ExerciseSetsCard({
             ))}
           </Select>
           <TextField
-            size="small"
             type="number"
-            inputProps={{ inputMode: 'decimal', step: '0.5', min: 0 }}
+            inputProps={{
+              inputMode: 'decimal',
+              step: '0.5',
+              min: 0,
+              style: {
+                fontSize: 22,
+                fontWeight: 700,
+                textAlign: 'center',
+                padding: '10px 6px',
+                fontVariantNumeric: 'tabular-nums',
+              },
+            }}
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             onFocus={(e) => e.target.select()}
             sx={{ flex: 1 }}
             placeholder="kg"
           />
-          <Box sx={{ color: 'text.secondary', px: 0.5 }}>×</Box>
+          <Box
+            sx={{
+              color: 'text.secondary',
+              px: 0.5,
+              fontSize: 18,
+              fontWeight: 700,
+            }}
+          >
+            ×
+          </Box>
           <TextField
-            size="small"
             type="number"
-            inputProps={{ inputMode: 'numeric', min: 1 }}
+            inputProps={{
+              inputMode: 'numeric',
+              min: 1,
+              style: {
+                fontSize: 22,
+                fontWeight: 700,
+                textAlign: 'center',
+                padding: '10px 6px',
+                fontVariantNumeric: 'tabular-nums',
+              },
+            }}
             value={reps}
             onChange={(e) => setReps(e.target.value)}
             onFocus={(e) => e.target.select()}
-            sx={{ width: 72 }}
+            sx={{ width: 84 }}
             placeholder="reps"
           />
           <IconButton
@@ -196,10 +224,12 @@ export default function ExerciseSetsCard({
             sx={{
               bgcolor: 'primary.main',
               color: 'primary.contrastText',
+              width: 48,
+              height: 48,
               '&:hover': { bgcolor: 'primary.dark' },
             }}
           >
-            <CheckRoundedIcon />
+            <CheckRoundedIcon fontSize="medium" />
           </IconButton>
         </Stack>
       </CardContent>
@@ -225,39 +255,44 @@ function SetRow({
     DROP: 'warning.main',
     FAILURE: 'error.main',
   };
+  const numberInputStyle = {
+    fontSize: 18,
+    fontWeight: 700,
+    textAlign: 'center' as const,
+    padding: '6px 4px',
+    fontVariantNumeric: 'tabular-nums' as const,
+  };
   return (
-    <Stack direction="row" alignItems="center" spacing={0.5}>
+    <Stack direction="row" alignItems="center" spacing={0.5} sx={{ py: 0.25 }}>
       <Box sx={{ minWidth: 32 }}>
         <Typography
-          variant="body2"
-          fontWeight={700}
+          variant="body1"
+          fontWeight={800}
           sx={{ color: typeColor[set.setType] }}
         >
           {set.setType === 'NORMAL' ? set.setNumber : setTypeLabel[set.setType][0]}
         </Typography>
       </Box>
       <TextField
-        size="small"
         variant="standard"
         type="number"
-        inputProps={{ inputMode: 'decimal', step: '0.5', min: 0 }}
+        inputProps={{ inputMode: 'decimal', step: '0.5', min: 0, style: numberInputStyle }}
         value={set.weightKg}
         onChange={(e) => onUpdate({ weightKg: parseFloat(e.target.value) || 0 })}
         onFocus={(e) => e.target.select()}
         sx={{ flex: 1 }}
       />
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" fontWeight={600}>
         kg ×
       </Typography>
       <TextField
-        size="small"
         variant="standard"
         type="number"
-        inputProps={{ inputMode: 'numeric', min: 1 }}
+        inputProps={{ inputMode: 'numeric', min: 1, style: numberInputStyle }}
         value={set.reps}
         onChange={(e) => onUpdate({ reps: parseInt(e.target.value, 10) || 1 })}
         onFocus={(e) => e.target.select()}
-        sx={{ width: 56 }}
+        sx={{ width: 64 }}
       />
       {info && (
         <Chip
