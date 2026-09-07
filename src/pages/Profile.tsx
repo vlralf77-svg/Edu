@@ -24,10 +24,10 @@ export default function Profile() {
   };
 
   const share = async () => {
-    const text = `[가족통화] 저는 ${profile.name} (${profile.role}) 예요. 제 ID: ${profile.peerId}`;
+    const text = `[우리가족] 저는 ${profile.name} (${profile.role}) 예요. 제 ID: ${profile.peerId}`;
     try {
       if ((navigator as any).share) {
-        await (navigator as any).share({ title: '가족통화 ID', text });
+        await (navigator as any).share({ title: '우리가족 ID', text });
       } else {
         await navigator.clipboard.writeText(text);
         setCopied(true);

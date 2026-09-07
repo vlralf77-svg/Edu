@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.familycall.app',
-  appName: '가족통화',
+  appName: '우리가족',
   webDir: 'dist',
   backgroundColor: '#F6FAFA',
   plugins: {

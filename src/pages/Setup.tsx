@@ -31,7 +31,7 @@ export default function Setup() {
           <PhoneInTalkRoundedIcon sx={{ fontSize: 44 }} />
         </Avatar>
         <Typography variant="h4" fontWeight={800} textAlign="center">
-          가족통화
+          우리가족
         </Typography>
         <Typography variant="body1" color="text.secondary" textAlign="center">
           유심 없이 데이터·와이파이만으로<br />

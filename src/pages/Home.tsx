@@ -25,7 +25,7 @@ export default function Home() {
         sx={{ bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Toolbar>
           <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1 }}>
-            가족통화
+            우리가족
           </Typography>
           <IconButton onClick={() => { void tapHaptic(); nav('/profile'); }}>
             <QrCode2RoundedIcon />
