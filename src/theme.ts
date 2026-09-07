@@ -1,30 +1,29 @@
 import { createTheme } from '@mui/material/styles';
 
-// TinyLearn 테마 — Primary: #7F77DD 퍼플, Secondary: #1D9E75 틸
+// 가족통화 테마 — 부드러운 틸 계열, 따뜻한 배경
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#7F77DD',
-      light: '#A39DEA',
-      dark: '#5B53B8',
+      main: '#0EA5A4',
+      light: '#5EEAD4',
+      dark: '#0F766E',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#1D9E75',
-      light: '#4FBF98',
-      dark: '#137254',
+      main: '#F97316',
+      light: '#FDBA74',
+      dark: '#C2410C',
       contrastText: '#FFFFFF',
     },
     background: {
-      default: '#FFF8E7', // 따뜻한 크림색 배경
+      default: '#F6FAFA',
       paper: '#FFFFFF',
     },
-    warning: {
-      main: '#FFC53D', // 별 색상
-    },
+    success: { main: '#10B981' },
+    error: { main: '#EF4444' },
     text: {
-      primary: '#3A3A52',
-      secondary: '#6E6E87',
+      primary: '#0F172A',
+      secondary: '#64748B',
     },
   },
   typography: {
@@ -35,24 +34,22 @@ export const theme = createTheme({
     h3: { fontWeight: 700 },
     button: { fontWeight: 700, textTransform: 'none' },
   },
-  shape: {
-    borderRadius: 20,
-  },
+  shape: { borderRadius: 18 },
   components: {
     MuiButton: {
-      defaultProps: { disableElevation: false },
+      defaultProps: { disableElevation: true },
       styleOverrides: {
         root: {
-          borderRadius: 24,
-          paddingTop: 12,
-          paddingBottom: 12,
-          fontSize: '1.1rem',
+          borderRadius: 22,
+          paddingTop: 10,
+          paddingBottom: 10,
+          fontSize: '1rem',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        rounded: { borderRadius: 28 },
+        rounded: { borderRadius: 22 },
       },
     },
   },

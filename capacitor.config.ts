@@ -1,15 +1,19 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.tinylearn.app',
-  appName: '티니런',
+  appId: 'com.familycall.app',
+  appName: '가족통화',
   webDir: 'dist',
-  backgroundColor: '#FFF8E7',
+  backgroundColor: '#F6FAFA',
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1500,
-      backgroundColor: '#7F77DD',
+      launchShowDuration: 1200,
+      backgroundColor: '#0EA5A4',
       showSpinner: false,
+    },
+    LocalNotifications: {
+      smallIcon: 'ic_stat_icon_config_sample',
+      iconColor: '#0EA5A4',
     },
   },
 };
