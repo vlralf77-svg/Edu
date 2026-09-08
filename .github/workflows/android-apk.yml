@@ -1,9 +1,10 @@
-# Capacitor 안드로이드 디버그 APK를 빌드해 아티팩트로 업로드하는 워크플로.
-# GitHub 러너는 Google Maven/Android SDK 접근이 가능하므로 여기서 APK를 생성한다.
+# 가족통화 앱 안드로이드 APK 빌드 워크플로
+#
+# - 브랜치 push · 수동 실행 · v* 태그 push 시 APK 빌드
+# - 아티팩트 업로드 + latest 태그로 GitHub Release 자동 생성 → 직접 다운로드 링크 제공
 name: Build Android APK
 
 on:
-  # Actions 탭에서 수동 실행
   workflow_dispatch:
     inputs:
       build_type:
@@ -13,13 +14,17 @@ on:
         options:
           - debug
           - release
-  # v* 태그 푸시 시 자동 빌드
   push:
+    branches:
+      - claude/family-data-wifi-calling-app-fpfqfh
+      - main
     tags:
       - "v*"
+    paths-ignore:
+      - "**.md"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -34,11 +39,11 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Setup Java (JDK 17)
+      - name: Setup Java (JDK 21)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -66,17 +71,56 @@ jobs:
             ./gradlew assembleDebug --no-daemon --stacktrace
           fi
 
-      - name: Locate APK
+      - name: Rename APK
         id: apk
         run: |
-          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "Built APK: $APK"
+          mkdir -p out
+          SRC=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
+          if [ -z "$SRC" ]; then
+            echo "APK not found"; exit 1
+          fi
+          DEST="out/family-call-${{ github.sha }}.apk"
+          cp "$SRC" "$DEST"
+          # 다운로드용 심볼릭 이름도 하나 더
+          cp "$SRC" "out/family-call-latest.apk"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+          ls -la out
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tinylearn-apk
-          path: android/app/build/outputs/apk/**/*.apk
+          name: family-call-apk
+          path: out/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish "latest" Release with APK
+        # 브랜치 push 나 수동 실행에서 실행 (태그 push 아닌 경우만)
+        if: github.ref_type != 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "가족통화 최신 빌드 (Debug APK)"
+          body: |
+            자동 빌드된 APK 입니다. 스마트폰에서 아래 `family-call-latest.apk` 를 눌러 다운로드하세요.
+
+            - 빌드 커밋: ${{ github.sha }}
+            - 빌드 시각: ${{ github.event.head_commit.timestamp }}
+
+            📱 설치 방법:
+            1. 안드로이드 폰에서 링크를 눌러 APK 를 다운로드
+            2. 설정 → 알 수 없는 앱 설치 허용
+            3. 다운로드된 APK 를 눌러 설치
+          files: |
+            out/family-call-latest.apk
+            out/family-call-${{ github.sha }}.apk
+          prerelease: true
+          make_latest: "true"
+          fail_on_unmatched_files: true
+
+      - name: Publish Tagged Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.apk
+          fail_on_unmatched_files: true
