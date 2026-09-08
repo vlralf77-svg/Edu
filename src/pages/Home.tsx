@@ -7,6 +7,7 @@ import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded';
 import CircleIcon from '@mui/icons-material/Circle';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useCallStore } from '../store/useCallStore';
@@ -32,6 +33,9 @@ export default function Home() {
           </IconButton>
           <IconButton onClick={() => { void tapHaptic(); nav('/profile'); }}>
             <PersonRoundedIcon />
+          </IconButton>
+          <IconButton onClick={() => { void tapHaptic(); nav('/settings'); }}>
+            <SettingsRoundedIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
