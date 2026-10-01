@@ -7,9 +7,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
@@ -20,11 +22,13 @@ import androidx.core.app.NotificationCompat;
  * 이렇게 두면 WebView 안의 PeerJS 연결이 백그라운드에서도 살아 있어서
  * 앱을 최소화 상태로 두어도 가족의 전화를 받을 수 있다.
  *
- * 주의: 사용자가 "최근 앱" 목록에서 스와이프해 앱을 완전히 종료하면
- * 액티비티가 파괴되고 WebView 도 함께 죽는다. 부팅/재실행 시에는
- * MainActivity 가 자동으로 이 서비스를 다시 시작한다.
+ * API 34+: foregroundServiceType=dataSync 로 선언.
+ * (phoneCall 은 Telecom ConnectionService 와 연동되어야 쓸 수 있고,
+ *  연동 없이 시작하면 ForegroundServiceStartNotAllowedException 발생.)
  */
 public class CallListenerService extends Service {
+
+    private static final String TAG = "FamilyCallStandby";
 
     public static final String CHANNEL_ID = "family_call_standby";
     public static final int NOTIF_ID = 42;
@@ -35,16 +39,25 @@ public class CallListenerService extends Service {
     private PowerManager.WakeLock wakeLock;
 
     public static void start(Context ctx) {
-        Intent i = new Intent(ctx, CallListenerService.class).setAction(ACTION_START);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ctx.startForegroundService(i);
-        } else {
-            ctx.startService(i);
+        try {
+            Intent i = new Intent(ctx, CallListenerService.class).setAction(ACTION_START);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ctx.startForegroundService(i);
+            } else {
+                ctx.startService(i);
+            }
+        } catch (Throwable t) {
+            // OS 가 백그라운드에서의 시작을 거부해도 앱이 죽지 않도록.
+            Log.w(TAG, "startForegroundService failed", t);
         }
     }
 
     public static void stop(Context ctx) {
-        ctx.stopService(new Intent(ctx, CallListenerService.class));
+        try {
+            ctx.stopService(new Intent(ctx, CallListenerService.class));
+        } catch (Throwable t) {
+            Log.w(TAG, "stopService failed", t);
+        }
     }
 
     @Override
@@ -56,22 +69,33 @@ public class CallListenerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            stopForeground(true);
+            stopForegroundCompat();
             stopSelf();
             releaseWakeLock();
             return START_NOT_STICKY;
         }
 
-        startForeground(NOTIF_ID, buildNotification());
-        acquireWakeLock();
+        try {
+            Notification n = buildNotification();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // API 29+ 는 startForeground 에 type 전달 가능. API 34+ 는 manifest 와 일치해야 함.
+                startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIF_ID, n);
+            }
+            acquireWakeLock();
+        } catch (Throwable t) {
+            // startForeground 실패 시 (권한/정책) 앱을 죽이지 말고 조용히 종료.
+            Log.e(TAG, "startForeground failed; stopping service", t);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         // 프로세스가 죽어도 OS 가 자동으로 다시 시작하도록.
         return START_STICKY;
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // 사용자가 최근 앱에서 스와이프해도 서비스는 유지되게.
-        // (WebView 는 액티비티와 함께 죽지만, 재실행 시 빠르게 복구)
         super.onTaskRemoved(rootIntent);
     }
 
@@ -84,6 +108,18 @@ public class CallListenerService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    private void stopForegroundCompat() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(Service.STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "stopForeground failed", t);
+        }
     }
 
     private Notification buildNotification() {
@@ -110,6 +146,7 @@ public class CallListenerService extends Service {
     private void createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm == null) return;
             NotificationChannel ch = new NotificationChannel(
                     CHANNEL_ID, "전화 대기",
                     NotificationManager.IMPORTANCE_LOW);
@@ -121,11 +158,16 @@ public class CallListenerService extends Service {
     }
 
     private void acquireWakeLock() {
-        if (wakeLock != null && wakeLock.isHeld()) return;
-        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FamilyCall::Standby");
-        wakeLock.setReferenceCounted(false);
-        wakeLock.acquire();
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) return;
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null) return;
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FamilyCall::Standby");
+            wakeLock.setReferenceCounted(false);
+            wakeLock.acquire();
+        } catch (Throwable t) {
+            Log.w(TAG, "acquireWakeLock failed", t);
+        }
     }
 
     private void releaseWakeLock() {

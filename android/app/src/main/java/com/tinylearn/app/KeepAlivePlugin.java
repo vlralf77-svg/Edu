@@ -28,26 +28,36 @@ public class KeepAlivePlugin extends Plugin {
 
     @PluginMethod
     public void enable(PluginCall call) {
-        Context ctx = getContext();
-        SharedPreferences p = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE);
-        p.edit().putBoolean(BootReceiver.KEY_STANDBY, true).apply();
-        CallListenerService.start(ctx);
-
         JSObject ret = new JSObject();
-        ret.put("enabled", true);
-        call.resolve(ret);
+        try {
+            Context ctx = getContext();
+            SharedPreferences p = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE);
+            p.edit().putBoolean(BootReceiver.KEY_STANDBY, true).apply();
+            CallListenerService.start(ctx);
+            ret.put("enabled", true);
+            call.resolve(ret);
+        } catch (Throwable t) {
+            ret.put("enabled", false);
+            ret.put("error", String.valueOf(t.getMessage()));
+            call.resolve(ret);
+        }
     }
 
     @PluginMethod
     public void disable(PluginCall call) {
-        Context ctx = getContext();
-        SharedPreferences p = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE);
-        p.edit().putBoolean(BootReceiver.KEY_STANDBY, false).apply();
-        CallListenerService.stop(ctx);
-
         JSObject ret = new JSObject();
-        ret.put("enabled", false);
-        call.resolve(ret);
+        try {
+            Context ctx = getContext();
+            SharedPreferences p = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE);
+            p.edit().putBoolean(BootReceiver.KEY_STANDBY, false).apply();
+            CallListenerService.stop(ctx);
+            ret.put("enabled", false);
+            call.resolve(ret);
+        } catch (Throwable t) {
+            ret.put("enabled", false);
+            ret.put("error", String.valueOf(t.getMessage()));
+            call.resolve(ret);
+        }
     }
 
     @PluginMethod
