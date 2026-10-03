@@ -9,11 +9,7 @@ import '@fontsource/baloo-2/800.css';
 
 import App from './App';
 import { theme } from './theme';
-import { initialize } from './utils/admob';
 import './index.css';
-
-// AdMob 초기화 (네이티브에서만 실제 동작)
-void initialize();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

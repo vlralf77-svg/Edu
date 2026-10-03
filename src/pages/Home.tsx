@@ -1,115 +1,158 @@
-import { Box, Stack, Typography, IconButton } from '@mui/material';
+import {
+  AppBar, Toolbar, Typography, IconButton, Box, Paper, Stack, Avatar,
+  List, ListItem, ListItemAvatar, ListItemText, Button, Chip, Fab, Divider,
+} from '@mui/material';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
+import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
+import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded';
+import CircleIcon from '@mui/icons-material/Circle';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-
-import StarBadge from '@/components/common/StarBadge';
-import BigButton from '@/components/common/BigButton';
-import AdBanner from '@/components/common/AdBanner';
-import { useGameStore } from '@/store/useGameStore';
+import { useAppStore } from '../store/useAppStore';
+import { useCallStore } from '../store/useCallStore';
+import { startCallTo } from '../components/CallProvider';
+import { tapHaptic } from '../services/notify';
 
 export default function Home() {
-  const navigate = useNavigate();
-  const stars = useGameStore((s) => s.stars);
-  const todayCorrect = useGameStore((s) => s.todayCorrect);
-  const streak = useGameStore((s) => s.streak);
-  const checkAttendance = useGameStore((s) => s.checkAttendance);
-
-  // 앱 진입 시 출석/연속 출석 체크
-  useEffect(() => {
-    checkAttendance();
-  }, [checkAttendance]);
+  const profile = useAppStore((s) => s.profile);
+  const family = useAppStore((s) => s.family);
+  const peerReady = useCallStore((s) => s.peerReady);
+  const nav = useNavigate();
 
   return (
-    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      {/* 상단 바 */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2 }}>
-        <StarBadge count={stars} />
-        <Stack direction="row" spacing={1} alignItems="center">
-          {streak > 0 && (
-            <Stack
-              direction="row"
-              alignItems="center"
-              sx={{ px: 1.5, py: 0.5, borderRadius: 999, bgcolor: '#FFE8D6' }}
-            >
-              <LocalFireDepartmentRoundedIcon sx={{ color: '#F97316', fontSize: 22 }} />
-              <Typography sx={{ fontWeight: 800, color: '#C2410C', ml: 0.3 }}>
-                {streak}일
+    <Box sx={{ pb: 12 }}>
+      <AppBar position="sticky" color="transparent" elevation={0}
+        sx={{ bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Toolbar>
+          <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1 }}>
+            우리가족
+          </Typography>
+          <IconButton onClick={() => { void tapHaptic(); nav('/profile'); }}>
+            <QrCode2RoundedIcon />
+          </IconButton>
+          <IconButton onClick={() => { void tapHaptic(); nav('/profile'); }}>
+            <PersonRoundedIcon />
+          </IconButton>
+          <IconButton onClick={() => { void tapHaptic(); nav('/settings'); }}>
+            <SettingsRoundedIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ p: 2, maxWidth: 560, mx: 'auto' }}>
+        {/* 내 상태 카드 */}
+        <Paper elevation={0} sx={{
+          p: 2, mb: 2, bgcolor: 'primary.main', color: 'primary.contrastText',
+          display: 'flex', alignItems: 'center', gap: 2,
+        }}>
+          <Avatar sx={{ width: 56, height: 56, bgcolor: 'rgba(255,255,255,0.25)', fontSize: 28 }}>
+            {profile?.emoji}
+          </Avatar>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>{profile?.role}</Typography>
+            <Typography variant="h6" fontWeight={800}>{profile?.name}</Typography>
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+              <CircleIcon sx={{ fontSize: 10, color: peerReady ? '#5EEAD4' : '#FCA5A5' }} />
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                {peerReady ? '온라인 · 통화 가능' : '연결 중…'}
               </Typography>
             </Stack>
-          )}
-          <IconButton aria-label="설정" onClick={() => navigate('/settings')}>
-            <SettingsRoundedIcon sx={{ fontSize: 30, color: 'text.secondary' }} />
-          </IconButton>
+          </Box>
+          <Chip
+            size="small"
+            label={profile?.peerId}
+            sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontFamily: 'monospace' }}
+            onClick={() => nav('/profile')}
+          />
+        </Paper>
+
+        {/* 가족 목록 */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1, mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={800}>
+            우리 가족 ({family.length})
+          </Typography>
+          <Button
+            startIcon={<PersonAddAlt1RoundedIcon />}
+            onClick={() => nav('/add')}
+            size="small"
+          >
+            추가
+          </Button>
         </Stack>
-      </Stack>
 
-      {/* 메인 영역 */}
-      <Stack
-        spacing={4}
-        alignItems="center"
-        justifyContent="center"
-        sx={{ flex: 1, px: 3, textAlign: 'center' }}
-      >
-        <Box className="tl-float">
-          <Typography variant="h2" sx={{ color: 'primary.main', fontSize: '3rem' }}>
-            티니런
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontWeight: 700 }}>
-            그림으로 배우는 영어 · 색깔 놀이
-          </Typography>
-        </Box>
-
-        {todayCorrect > 0 && (
-          <Typography sx={{ fontWeight: 800, color: 'secondary.main', fontSize: '1.2rem' }}>
-            오늘 ★ {todayCorrect}개 획득! 🎉
-          </Typography>
+        {family.length === 0 ? (
+          <Paper elevation={0} sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
+            <Typography variant="h1" sx={{ fontSize: 56, mb: 1 }}>👨‍👩‍👧‍👦</Typography>
+            <Typography variant="body1" color="text.secondary" mb={2}>
+              등록된 가족이 아직 없어요
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              가족의 ID를 추가하면 데이터/와이파이로<br />무료 통화를 걸 수 있어요.
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<PersonAddAlt1RoundedIcon />}
+              onClick={() => nav('/add')}
+            >
+              가족 추가하기
+            </Button>
+          </Paper>
+        ) : (
+          <Paper elevation={0} sx={{ bgcolor: 'background.paper', overflow: 'hidden' }}>
+            <List disablePadding>
+              {family.map((m, idx) => (
+                <Box key={m.id}>
+                  {idx > 0 && <Divider component="li" />}
+                  <ListItem
+                    secondaryAction={
+                      <Fab
+                        size="small"
+                        color="primary"
+                        aria-label={`${m.name} 에게 전화`}
+                        disabled={!peerReady}
+                        onClick={() => {
+                          void tapHaptic();
+                          void startCallTo(m.id, m.name, m.emoji);
+                        }}
+                        sx={{ boxShadow: 'none' }}
+                      >
+                        <PhoneRoundedIcon />
+                      </Fab>
+                    }
+                    sx={{ py: 1.5 }}
+                    onClick={() => nav(`/family/${encodeURIComponent(m.id)}`)}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.contrastText', fontSize: 24 }}>
+                        {m.emoji}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography fontWeight={700}>
+                          {m.name} <Typography component="span" variant="caption" color="text.secondary">· {m.role}</Typography>
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                          {m.id}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                </Box>
+              ))}
+            </List>
+          </Paper>
         )}
 
-        <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 360 }}>
-          <BigButton
-            color="primary"
-            startIcon={<span style={{ fontSize: 28 }}>🔤</span>}
-            onClick={() => navigate('/mode?game=word')}
-          >
-            영단어 배우기
-          </BigButton>
-          <BigButton
-            color="secondary"
-            startIcon={<span style={{ fontSize: 28 }}>🔴</span>}
-            onClick={() => navigate('/mode?game=shape')}
-          >
-            색·도형 놀이
-          </BigButton>
-          <BigButton
-            color="primary"
-            startIcon={<span style={{ fontSize: 28 }}>✏️</span>}
-            onClick={() => navigate('/hangul')}
-            sx={{ bgcolor: '#E8743B', '&:hover': { bgcolor: '#CF5F2A' } }}
-          >
-            한글 배우기
-          </BigButton>
-        </Stack>
-      </Stack>
-
-      {/* 개발·QA용 테스트 페이지 진입 (작게 노출) */}
-      <Typography
-        onClick={() => navigate('/test')}
-        sx={{
-          textAlign: 'center',
-          fontSize: '0.72rem',
-          color: 'text.secondary',
-          opacity: 0.6,
-          py: 0.5,
-          cursor: 'pointer',
-        }}
-      >
-        🧪 테스트 페이지
-      </Typography>
-
-      {/* 홈 화면 하단 배너 광고 */}
-      <AdBanner />
+        {!peerReady && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>
+            네트워크에 연결 중이에요… (Wi-Fi 또는 모바일 데이터 필요)
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 }

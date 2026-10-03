@@ -12,46 +12,33 @@ body,
 
 body {
   overscroll-behavior: none;
-  user-select: none;
-  -webkit-user-select: none;
   touch-action: manipulation;
 }
 
-/* 안전 영역 (노치/홈 인디케이터) 대응 */
 #root {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
 
-/* 흔들림 애니메이션 (오답 피드백) */
-@keyframes tl-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-6px); }
-  80% { transform: translateX(6px); }
+/* 수신 전화 링 애니메이션 */
+@keyframes fc-ring-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(14, 165, 164, 0.55); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 24px rgba(14, 165, 164, 0); }
 }
 
-/* 팝 애니메이션 (정답 피드백) */
-@keyframes tl-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.18); }
-  100% { transform: scale(1); }
+@keyframes fc-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-6px) rotate(-6deg); }
+  50% { transform: translateX(0) rotate(0deg); }
+  75% { transform: translateX(6px) rotate(6deg); }
 }
 
-/* 둥실 떠오르는 애니메이션 */
-@keyframes tl-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+@keyframes fc-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 컨페티 낙하 */
-@keyframes tl-fall {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-}
-
-.tl-shake { animation: tl-shake 0.4s ease; }
-.tl-pop { animation: tl-pop 0.4s ease; }
-.tl-float { animation: tl-float 3s ease-in-out infinite; }
+.fc-ring { animation: fc-ring-pulse 1.4s ease-out infinite; }
+.fc-shake { animation: fc-shake 0.8s ease-in-out infinite; }
+.fc-fadein { animation: fc-fadein 0.35s ease-out both; }
