@@ -10,6 +10,12 @@ from PIL import ImageFont
 from ..config import PROJECT_ROOT
 
 
+OS_FONTS = [
+    r"C:\Windows\Fonts\malgunbd.ttf", r"C:\Windows\Fonts\malgun.ttf",
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc", "/Library/Fonts/AppleGothic.ttf",
+]
+
+
 @lru_cache(maxsize=4)
 def find_font(preferred: str = "") -> tuple[Path, int]:
     """(폰트 파일 경로, TTC 인덱스) 반환."""
@@ -19,6 +25,9 @@ def find_font(preferred: str = "") -> tuple[Path, int]:
     bold = [p for p in local if "bold" in p.name.lower()]
     if bold or local:
         return (bold or local)[0], 0
+    for cand in OS_FONTS:  # Windows 맑은 고딕 / Mac 애플 SD 고딕 Neo
+        if Path(cand).exists():
+            return Path(cand), _kr_index(Path(cand), 0)
     for pattern in ("Pretendard:style=Bold", "Noto Sans CJK KR:style=Bold", "Noto Sans CJK KR", "NanumGothic"):
         try:
             out = subprocess.run(["fc-match", "-f", "%{file}|%{index}|%{family}", pattern],

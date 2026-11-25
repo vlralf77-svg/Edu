@@ -16,7 +16,7 @@ NOW = datetime(2026, 11, 25, 0, 0, tzinfo=timezone.utc)
 
 @pytest.fixture
 def settings(tmp_path):
-    return load_settings(overrides={"paths": {"data_dir": str(tmp_path / "data")},
+    return load_settings(use_local=False, overrides={"paths": {"data_dir": str(tmp_path / "data")},
                                     "notify": {"enabled": False}})
 
 

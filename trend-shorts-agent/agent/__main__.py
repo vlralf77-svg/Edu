@@ -149,11 +149,45 @@ def schedule():
 
 
 @app.command("daily-job")
-def daily_job():
-    """cron 용: 락 + 하루 1회 보장 후 run-daily"""
+def daily_job(if_due: bool = typer.Option(False, "--if-due", help="예정 시각이 지났고 아직 안 돌았을 때만 (로그인 시 보충 실행용)")):
+    """예약 작업용: 락 + 하루 1회 보장 후 run-daily"""
     from .scheduler import daily_job as _j
-    d = _j()
+    d = _j(if_due=if_due)
     typer.echo(f"실행: {d}" if d else "건너뜀 (이미 실행됨/실행 중/실패 — 로그 확인)")
+
+
+@app.command("app")
+def control_panel(port: int = 8501):
+    """통합 제어판 (프로그램 화면) 실행 — 브라우저 창이 자동으로 열립니다"""
+    app_path = Path(__file__).parent / "ui" / "app.py"
+    typer.echo(f"제어판을 엽니다: http://localhost:{port}  (이 창을 닫으면 제어판이 종료됩니다)")
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(app_path), "--server.port", str(port),
+                    "--server.address", "localhost", "--browser.gatherUsageStats", "false"], cwd=PROJECT_ROOT)
+
+
+@app.command("schedule-install")
+def schedule_install():
+    """이 PC 의 예약 작업(Windows 작업 스케줄러 / crontab)에 매일 자동 실행 등록"""
+    from .scheduler import install_schedule
+    typer.echo(install_schedule())
+
+
+@app.command("schedule-uninstall")
+def schedule_uninstall():
+    """자동 실행 해제"""
+    from .scheduler import uninstall_schedule
+    typer.echo(uninstall_schedule())
+
+
+@app.command()
+def doctor():
+    """이 PC 에서 돌릴 준비가 됐는지 점검"""
+    from .doctor import ready, run_checks
+    checks = run_checks(get_settings())
+    for c in checks:
+        icon = "OK " if c.ok else ("X  " if c.required else "-  ")
+        typer.echo(f"[{icon}] {c.name}: {c.detail}" + (f"\n       → {c.fix}" if not c.ok and c.fix else ""))
+    typer.echo("\n준비 완료" if ready(checks) else "\n필수 항목이 아직 준비되지 않았습니다")
 
 
 @app.command("crontab")

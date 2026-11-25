@@ -1,0 +1,12 @@
+[server]
+address = "localhost"   # 내 PC 에서만 접속 (외부 노출 안 함)
+port = 8501
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+
+[client]
+toolbarMode = "minimal"   # 개발자용 Deploy 버튼 숨김

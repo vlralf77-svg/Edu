@@ -55,8 +55,13 @@ def render_scene(image: Path, overlay: Path, duration: float, out: Path, idx: in
 
 def concat_videos(parts: list[Path], out: Path) -> None:
     lst = out.with_suffix(".txt")
-    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts), encoding="utf-8")
+    lst.write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in parts), encoding="utf-8")
     run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(out)])
+
+
+def filter_path(p: Path) -> str:
+    """ffmpeg 필터 인자용 경로 (Windows 드라이브 문자 C: 의 콜론·역슬래시 이스케이프)."""
+    return Path(p).resolve().as_posix().replace(":", r"\:").replace("'", r"\'")
 
 
 # ---------------------------------------------------------------- 오디오
@@ -127,8 +132,7 @@ def finalize(video: Path, audio: Path, out: Path, total: float, ass: Path | None
              fps: int = 30) -> None:
     vf = "null"
     if ass is not None:
-        esc = str(ass.resolve()).replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
-        vf = f"ass='{esc}'" + (f":fontsdir='{fonts_dir}'" if fonts_dir else "")
+        vf = f"ass='{filter_path(ass)}'" + (f":fontsdir='{filter_path(fonts_dir)}'" if fonts_dir else "")
     run_ffmpeg(["-i", str(video), "-i", str(audio), "-filter_complex",
                 f"[0:v]{vf},format=yuv420p[v];[1:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample={SR}[a]",
                 "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}", "-r", str(fps),

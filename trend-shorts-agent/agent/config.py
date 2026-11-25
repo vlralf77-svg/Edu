@@ -165,10 +165,17 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
-def load_settings(path: str | Path | None = None, overrides: dict[str, Any] | None = None) -> Settings:
-    load_dotenv(PROJECT_ROOT / ".env")
+LOCAL_SETTINGS = CONFIG_DIR / "settings.local.yaml"   # 화면(설정 탭)에서 바꾼 값. git 제외
+ENV_FILE = PROJECT_ROOT / ".env"
+
+
+def load_settings(path: str | Path | None = None, overrides: dict[str, Any] | None = None,
+                  use_local: bool = True) -> Settings:
+    load_dotenv(ENV_FILE, override=True)
     path = Path(path or os.environ.get("AGENT_SETTINGS", CONFIG_DIR / "settings.yaml"))
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if use_local and "AGENT_SETTINGS" not in os.environ and LOCAL_SETTINGS.exists():
+        raw = _deep_merge(raw or {}, yaml.safe_load(LOCAL_SETTINGS.read_text(encoding="utf-8")) or {})
     if overrides:
         raw = _deep_merge(raw or {}, overrides)
     return Settings.model_validate(raw or {})
@@ -189,3 +196,47 @@ def load_prompt(name: str, **kwargs: Any) -> str:
 
 def env(name: str, default: str = "") -> str:
     return os.environ.get(name, default)
+
+
+# ---------------------------------------------------------------- 화면에서 저장
+def save_local_settings(updates: dict[str, Any], path: Path | None = None) -> Path:
+    """settings.yaml(주석 포함 원본)은 건드리지 않고 settings.local.yaml 에 덮어쓸 값만 저장."""
+    path = path or LOCAL_SETTINGS
+    current = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    merged = _deep_merge(current or {}, updates)
+    path.write_text(yaml.safe_dump(merged, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    get_settings.cache_clear()
+    return path
+
+
+def read_env(path: Path | None = None) -> dict[str, str]:
+    path = path or ENV_FILE
+    out: dict[str, str] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.split("#", 1)[0].strip() if v.strip().startswith(("#", " ")) else v.strip()
+    return out
+
+
+def save_env(updates: dict[str, str], path: Path | None = None) -> Path:
+    """.env 의 해당 키만 갱신 (다른 줄·주석 유지). 빈 값은 무시해서 실수로 키가 지워지지 않게."""
+    path = path or ENV_FILE
+    updates = {k: v.strip() for k, v in updates.items() if v and v.strip()}
+    if not path.exists():
+        example = PROJECT_ROOT / ".env.example"
+        path.write_text(example.read_text(encoding="utf-8") if example.exists() else "", encoding="utf-8")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    done = set()
+    for i, line in enumerate(lines):
+        key = line.split("=", 1)[0].strip()
+        if "=" in line and not line.lstrip().startswith("#") and key in updates:
+            lines[i] = f"{key}={updates[key]}"
+            done.add(key)
+    lines += [f"{k}={v}" for k, v in updates.items() if k not in done]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    for k, v in updates.items():
+        os.environ[k] = v
+    get_settings.cache_clear()
+    return path

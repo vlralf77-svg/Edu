@@ -9,3 +9,4 @@ data/
 *.mid
 assets/soundfonts/*.sf2
 config/client_secret.json
+config/settings.local.yaml

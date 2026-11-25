@@ -1,6 +1,6 @@
 # 개발 진행 기록
 
-> 기준일: 2026-11-25 · 테스트: `pytest` **84개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
+> 기준일: 2026-11-25 · 테스트: `pytest` **95개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
 > 빠른 테스트만: `pytest -m "not slow"` (1~2초) · 전체: `pytest` (약 80초)
 
 ## 공통 실행 준비
@@ -104,3 +104,17 @@ cp .env.example .env                                 # 키 입력
 - [ ] Whisper 기반 자막 싱크 (Google TTS 는 현재 글자 비례 추정)
 - [ ] 라우드니스: 현재 loudnorm 1-pass. 필요하면 2-pass 로 정확도 향상
 - [ ] 첫 업로드 몇 편은 비공개로 올려 Content ID 경고 여부 확인 (법적·정책 체크리스트)
+
+---
+
+## 데스크톱 프로그램 모드 (서버 불필요) ✅ — 2026-11-25 추가
+- `agent/ui/app.py` 통합 제어판 (`python -m agent app`, 바탕화면 아이콘): 홈(분석 시작·제작 버튼·진행 로그) / 후보 검토 / 만든 영상(미리보기·저장·제목/설명 복사·폴더 열기) /
+  설정(API 키 → `.env`, 동작 설정 → `config/settings.local.yaml`) / 자동 실행(등록·해제) / 점검
+- 긴 작업은 별도 프로세스로 실행(`agent/ui/jobs.py`) → 화면을 새로고침하거나 닫아도 계속 진행, 동시에 하나만
+- `agent/doctor.py` / `python -m agent doctor`: FFmpeg·필터·한글 폰트·키·폴더 권한 점검 + 해결 방법
+- 설치/실행 스크립트: `install_windows.bat`·`start_windows.bat`, `install_mac.command`·`start_mac.command`, `install_linux.sh`·`start_linux.sh`
+- Windows 대응: 파일 락(msvcrt), 맑은 고딕/애플 SD 고딕 자동 사용, FFmpeg 필터 경로(드라이브 문자) 이스케이프, concat 경로 슬래시
+- 배경음악: fluidsynth·사운드폰트가 없으면 내장 numpy 신시사이저로 렌더링 (`bgm/synth.py`)
+- 자동 실행: Windows 작업 스케줄러(`schtasks`) + 시작프로그램 보충 실행 / Mac·Linux crontab + `@reboot` 보충, `daily-job --if-due`
+- ⚠️ Linux 에서만 실제 실행 확인. **Windows·Mac 설치 스크립트와 작업 스케줄러 등록은 실제 PC 에서 아직 시험하지 않음**
+  (이 개발 환경에 Windows/Mac 이 없음). 첫 설치 때 문제가 생기면 콘솔 메시지를 알려 주세요.

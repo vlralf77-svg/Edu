@@ -208,13 +208,20 @@ def compose(mood: str, duration: float, seed: int, tempo_bpm: int | None = None,
     return pm, meta
 
 
-def find_soundfont(path: Path) -> Path:
+def find_soundfont(path: Path) -> Path | None:
     if path.exists():
         return path
     for fb in SOUNDFONT_FALLBACKS:
         if Path(fb).exists():
             return Path(fb)
-    raise RuntimeError(f"사운드폰트 없음: {path} (apt install fluid-soundfont-gm 또는 파일 복사)")
+    return None
+
+
+def fluidsynth_available(soundfont: Path) -> Path | None:
+    """fluidsynth 실행 파일과 사운드폰트가 모두 있으면 사운드폰트 경로, 아니면 None(내장 신시사이저 사용)."""
+    if not shutil.which("fluidsynth"):
+        return None
+    return find_soundfont(soundfont)
 
 
 def render(pm: pretty_midi.PrettyMIDI, soundfont: Path, out_wav: Path) -> None:
@@ -251,20 +258,28 @@ def generate_bgm(mood: str, duration: float, seed: int, out_dir: Path, soundfont
                  energy=None, fade_in: float = 0.5, fade_out: float = 1.5) -> tuple[Path, dict]:
     """영상 길이 + 0.5초 길이의 bgm.wav 와 bgm_meta.json 생성."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    sf_path = find_soundfont(soundfont)
+    sf_path = fluidsynth_available(soundfont)
     length = duration + 0.5
     pm, meta = compose(mood, duration, seed, tempo_bpm, key, energy)
-    raw = out_dir / "bgm_raw.wav"
-    render(pm, sf_path, raw)
-    audio, sr = sf.read(str(raw), dtype="float32", always_2d=True)
-    assert sr == SR, sr
+    if sf_path is not None:
+        raw = out_dir / "bgm_raw.wav"
+        render(pm, sf_path, raw)
+        audio, sr = sf.read(str(raw), dtype="float32", always_2d=True)
+        assert sr == SR, sr
+        raw.unlink(missing_ok=True)
+        renderer = {"renderer": "fluidsynth", "soundfont": sf_path.name,
+                    "soundfont_license": SOUNDFONT_LICENSE.get(sf_path.name, "확인 필요")}
+    else:
+        from .synth import render_numpy
+        log.info("fluidsynth/사운드폰트 없음 → 내장 신시사이저로 렌더링")
+        audio = render_numpy(pm, seed)
+        renderer = {"renderer": "builtin-synth", "soundfont": "없음 (내장 신시사이저)",
+                    "soundfont_license": "자체 코드로 합성 — 외부 음원 없음"}
     audio = master(audio, length, fade_in, fade_out)
     out = out_dir / "bgm.wav"
     sf.write(str(out), audio, SR, subtype="PCM_16")
-    raw.unlink(missing_ok=True)
     meta.update({
-        "type": "generated", "length_sec": round(length, 3), "sample_rate": SR,
-        "soundfont": sf_path.name, "soundfont_license": SOUNDFONT_LICENSE.get(sf_path.name, "확인 필요"),
+        "type": "generated", "length_sec": round(length, 3), "sample_rate": SR, **renderer,
         "generator": "trend-shorts-agent procedural composer (pretty_midi + fluidsynth)",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "statement": "이 배경음악은 본 프로그램이 시드 기반으로 직접 작곡·렌더링한 것으로 외부 음원을 사용하지 않았습니다.",

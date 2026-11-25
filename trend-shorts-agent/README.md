@@ -6,7 +6,15 @@
 
 - 전체 명세: [`CLAUDE.md`](CLAUDE.md) · 진행 상황/TODO: [`docs/PROGRESS.md`](docs/PROGRESS.md)
 
-## 빠른 시작
+## 내 PC 프로그램으로 쓰기 (서버 불필요) — 권장
+
+1. `install_windows.bat` (Mac: `install_mac.command`, Linux: `install_linux.sh`) 더블클릭
+2. 바탕화면 **Trend Shorts Agent** 아이콘 → 브라우저에 제어판이 열림
+3. ⚙️ 설정에서 API 키 입력 → 🏠 홈에서 분석 시작 → ✅ 검토 → 영상 제작 → 🎬 만든 영상에서 저장
+
+자세한 설명: [`docs/INSTALL.md`](docs/INSTALL.md)
+
+## 빠른 시작 (개발자용 터미널)
 
 ```bash
 cd trend-shorts-agent
@@ -38,6 +46,9 @@ YouTube    Claude      Claude       Claude    Claude        md + 알림     Stre
 | `collect` / `cluster` / `research` / `write` | 단계별 실행 |
 | `review` / `candidates` / `decide ID approve` | 검토 (웹 / 터미널) |
 | `produce --script-id ID` / `--approved` | 영상 제작 |
+| `app` | 통합 제어판 (프로그램 화면) |
+| `doctor` | 이 PC 준비 상태 점검 |
+| `schedule-install` / `schedule-uninstall` | 이 PC 예약 작업에 매일 자동 실행 등록/해제 |
 | `bgm-samples` | 분위기 8종 샘플 BGM |
 | `schedule` / `daily-job` / `crontab` | 매일 07:00 KST 자동 실행 |
 | `publish --production-id ID` | (선택) 비공개 업로드 |
