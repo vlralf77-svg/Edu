@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk fluidsynth fluid-soundfont-gm curl
 command -v uv >/dev/null || { curl -LsSf https://astral.sh/uv/install.sh | sh; export PATH="$HOME/.local/bin:$PATH"; }
-uv venv --python 3.12 .venv
+[ -x .venv/bin/python ] || uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -e ".[review]"
 [ -f .env ] || cp .env.example .env
 mkdir -p data

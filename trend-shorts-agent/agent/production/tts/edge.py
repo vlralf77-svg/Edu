@@ -19,6 +19,24 @@ KOREAN_VOICES = {
 }
 
 
+def _auto_install(pkg: str) -> None:
+    """구버전 설치본에 부품이 없으면 자동 설치 (uv 사용, 없으면 pip)."""
+    import importlib
+    import logging
+    import os
+    import shutil
+    import subprocess
+    import sys
+    logging.getLogger(__name__).warning("필요한 부품 '%s' 을 설치합니다 (처음 한 번)...", pkg)
+    uv = shutil.which("uv") or next((p for p in (
+        os.path.expanduser("~/.local/bin/uv.exe"), os.path.expanduser("~/.local/bin/uv")) if os.path.exists(p)), None)
+    cmd = [uv, "pip", "install", "--python", sys.executable, pkg] if uv else [sys.executable, "-m", "pip", "install", pkg]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    importlib.invalidate_caches()
+    if r.returncode != 0:
+        raise RuntimeError(f"'{pkg}' 자동 설치 실패 — 설치 프로그램(install_windows.bat)을 다시 실행하세요.\n{r.stderr[-500:]}")
+
+
 class EdgeTTS(TTSProvider):
     name = "edge"
     supports_speed = True
@@ -26,8 +44,8 @@ class EdgeTTS(TTSProvider):
     def __init__(self, voice: str = "ko-KR-SunHiNeural"):
         try:
             import edge_tts  # noqa: F401
-        except ImportError as e:
-            raise RuntimeError("edge-tts 패키지가 없습니다. 설치 프로그램을 다시 실행하세요.") from e
+        except ImportError:
+            _auto_install("edge-tts")
         self.voice = voice or "ko-KR-SunHiNeural"
 
     async def _run(self, text: str, speed: float) -> tuple[bytes, list[Word]]:

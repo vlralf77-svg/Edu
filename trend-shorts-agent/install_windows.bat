@@ -33,8 +33,10 @@ if errorlevel 1 (
 )
 
 echo [3/5] 파이썬과 필요한 부품 설치 (처음엔 몇 분 걸립니다)
-uv venv --python 3.12 .venv
-if errorlevel 1 ( echo [오류] 파이썬 환경 생성 실패 & pause & exit /b 1 )
+if not exist ".venv\Scripts\python.exe" (
+  uv venv --python 3.12 .venv
+  if errorlevel 1 ( echo [오류] 파이썬 환경 생성 실패 & pause & exit /b 1 )
+)
 uv pip install --python .venv\Scripts\python.exe -e ".[review]"
 if errorlevel 1 ( echo [오류] 부품 설치 실패 & pause & exit /b 1 )
 
