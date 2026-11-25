@@ -130,8 +130,10 @@ def reset_time_kst() -> str:
 class QuotaBook:
     """오늘(태평양 시간 기준) 하루 한도가 끝난 모델·없는 모델을 기억해서 다시 시도하느라 시간 낭비하지 않게."""
 
-    def __init__(self, path):
+    def __init__(self, path, key: str = ""):
+        import hashlib
         self.path = path
+        self.key_id = hashlib.sha256(key.encode()).hexdigest()[:12]  # 키가 바뀌면 기록 초기화 (키 자체는 저장 안 함)
 
     def _load(self) -> dict:
         import json
@@ -139,8 +141,10 @@ class QuotaBook:
             data = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             data = {}
-        if data.get("day") != quota_day():
-            data = {"day": quota_day(), "exhausted": [], "missing": data.get("missing", [])}
+        if data.get("key") != self.key_id:
+            data = {"day": quota_day(), "key": self.key_id, "exhausted": [], "missing": []}
+        elif data.get("day") != quota_day():
+            data = {"day": quota_day(), "key": self.key_id, "exhausted": [], "missing": data.get("missing", [])}
         return data
 
     def blocked(self, model: str) -> bool:
@@ -174,7 +178,7 @@ class GeminiLLM:
         self._last_call = 0.0
         self._lock = threading.Lock()
         self._models: list[str] | None = None
-        self.book = QuotaBook(settings.data_dir / "gemini_quota.json")
+        self.book = QuotaBook(settings.data_dir / "gemini_quota.json", self.key)
 
     # ------------------------------------------------------------------ HTTP
     def _throttle(self) -> None:

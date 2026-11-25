@@ -232,3 +232,13 @@ def test_research_with_gemini_search_filters_unverified_urls(gem, settings):
         data = research_topic(ctx, {"title": "주제", "summary": "요약", "angle_ideas": []})
     assert [s["url"] for s in data["sources"]] == ["https://www.yna.co.kr/view/AKR1", "https://gov.kr/b"]
     assert data["confidence"] == "high"
+
+
+def test_new_key_resets_exhausted_memory(gem, settings, monkeypatch):
+    srv = Server([DAY_429, DAY_429], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    with pytest.raises(LLMError):
+        gem(srv).complete("q")
+    monkeypatch.setenv("GEMINI_API_KEY", "new-key")          # 키를 새로 발급해 교체
+    srv2 = Server([(200, ok('{"ok": 1}'))], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    assert gem(srv2).complete_json("q")[0] == {"ok": 1}
+    assert "new-key" not in (settings.data_dir / "gemini_quota.json").read_text(encoding="utf-8")
