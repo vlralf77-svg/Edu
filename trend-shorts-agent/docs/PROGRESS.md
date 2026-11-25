@@ -1,6 +1,6 @@
 # 개발 진행 기록
 
-> 기준일: 2026-11-25 · 테스트: `pytest` **67개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
+> 기준일: 2026-11-25 · 테스트: `pytest` **84개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
 > 빠른 테스트만: `pytest -m "not slow"` (1~2초) · 전체: `pytest` (약 80초)
 
 ## 공통 실행 준비
@@ -55,7 +55,15 @@ cp .env.example .env                                 # 키 입력
 ## Phase 5 — 제작 ✅
 - `production/tts/`: 어댑터 `elevenlabs`(with-timestamps 문자 정렬 → 단어 타임스탬프) / `google`(선택) / `dummy`(오프라인 테스트용)
 - 60초 초과 시 말속도 자동 조정(상한 `max_tts_speed` 1.15배), 그래도 넘으면 `failed` + "대본 축약 필요"
-- `production/visuals.py`: Pexels/Pixabay 세로 사진 → 1080x1920 크롭, 라이선스·작가·페이지 기록, 실패 시 그라디언트 + 키워드 타이포그래피 카드
+- `production/visuals.py` — **실제 영상·사진으로 화면 채우기** (2026-11-25 개선)
+  - 대본의 장면마다 `visual_query`(촬영 가능한 구체적 장면, 영문) + `visual_subject`(보여줄 실존 인물·기관·장소의 영문 위키백과 표기)
+  - 우선순위 `production.visual_sources`: ① Wikimedia Commons 인물·기관 사진(CC0/PD/CC BY/BY-SA 만, NC·ND·로고 제외, 키 불필요)
+    ② Pexels **영상 클립** ③ Pixabay **영상 클립** ④ Pexels/Pixabay 사진 ⑤ (최후) 타이포그래피 카드
+  - 같은 인물 사진은 한 영상에 최대 2장, 같은 클립/사진 재사용 없음, 클립은 세로·HD 우선·80MB 상한
+  - 영상 클립: 9:16 크롭 + 장면 길이에 맞춰 반복/자르기 + 원본 소리 제거 + 은은한 줌. 가로 인물 사진: 얼굴이 안 잘리게 흐린 배경 위 가운데 배치
+  - 설명란에 출처 자동 표기 (`"파일명" by 작가, 라이선스, via Wikimedia Commons URL` — CC BY 계열 표기 의무 충족)
+  - ⚠️ 이 개발 환경은 외부망이 막혀 있어 Pexels/Pixabay/Commons 실제 호출은 못 해봤고 API 문서 형식대로 구현 + mock 테스트만 함
+  - 뉴스 방송 화면·다른 유튜버 영상·기사 사진은 저작권 때문에 쓰지 않음 (특정 사건 '그 현장' 영상은 얻을 수 없고, 비슷한 분위기의 실사 클립으로 대체)
 - `production/subtitles.py`: 단어 타임스탬프 → SRT + ASS(한 줄 14자, 중앙 하단, 외곽선)
 - `production/composer.py`: 장면별 켄번스(줌인/줌아웃/좌우·상하 팬 순환) + 상단 타이틀 → 연결 → 자막 번인 → loudnorm -14 LUFS, H.264 veryfast
 - 산출물: `final.mp4`, `meta.json`(제목·설명(출처/이미지 크레딧/AI 공개 문구)·해시태그·합성 미디어 표기), `subtitles.srt`, `bgm.wav`, `bgm_meta.json`
@@ -91,8 +99,8 @@ cp .env.example .env                                 # 키 입력
 - [ ] 실제 키로 1회 실행: `collect` → `run-daily` → 검토 → `produce` (YouTube / Anthropic / ElevenLabs / Pexels)
 - [ ] ElevenLabs `voice_id` 설정 (한국어 보이스), 실제 낭독 속도에 맞춰 `script.chars_per_second` 보정 (현재 5.2자/초 가정)
 - [ ] 첫 실행 대본 품질 확인 후 `config/prompts/*.md` 튜닝
-- [ ] 스톡 **영상** 클립(Pexels Videos) 지원 — 현재는 사진 + 켄번스
+- [ ] Pexels/Pixabay/Commons 실제 키로 1회 확인 (영상 클립 검색어 품질 점검)
+- [ ] 공식 보도자료 사진(기업·기관 뉴스룸) 소스 추가 검토 — 사이트별 이용 조건 확인 필요
 - [ ] Whisper 기반 자막 싱크 (Google TTS 는 현재 글자 비례 추정)
 - [ ] 라우드니스: 현재 loudnorm 1-pass. 필요하면 2-pass 로 정확도 향상
-- [ ] 이미지 생성 API 어댑터(`visual_source: generated` 는 현재 타이포그래피 카드)
 - [ ] 첫 업로드 몇 편은 비공개로 올려 Content ID 경고 여부 확인 (법적·정책 체크리스트)

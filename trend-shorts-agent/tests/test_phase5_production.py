@@ -59,7 +59,7 @@ def test_visual_stock_crop_and_license(tmp_path):
         def search(self, q):
             return [{"url": "u1", "page": "p", "author": "a", "license": "Pexels License", "source": "pexels"}]
 
-        def download(self, url):
+        def download_image(self, url):
             return Image.new("RGB", (4000, 3000), "blue")
 
     meta = fetch_visual({"visual_query": "sea"}, tmp_path / "b.jpg", (1080, 1920), "pexels", set(), Stock())
@@ -100,7 +100,7 @@ def _approved(settings, script):
 @pytest.mark.slow
 def test_produce_sample_end_to_end(settings, monkeypatch):
     settings.production.tts_provider = "dummy"
-    settings.production.visual_source = "generated"
+    settings.production.visual_sources = []
     monkeypatch.setattr("agent.context.RunContext.llm", FakeLLM())
     sid = _approved(settings, _sample_script(settings))
     prod = produce(sid, settings=settings)
@@ -124,7 +124,7 @@ def test_produce_sample_end_to_end(settings, monkeypatch):
 @pytest.mark.slow
 def test_too_long_script_gets_sped_up_or_fails(settings, monkeypatch):
     settings.production.tts_provider = "dummy"
-    settings.production.visual_source = "generated"
+    settings.production.visual_sources = []
     monkeypatch.setattr("agent.context.RunContext.llm", FakeLLM())
     # 약 66초 분량 → 1.15배 이내로 속도 조정되어 60초 안에 들어와야 함
     sid = _approved(settings, _sample_script(settings, extra_chars=56))

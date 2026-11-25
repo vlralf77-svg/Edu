@@ -24,9 +24,18 @@ def run_ffmpeg(args: list[str]) -> None:
 
 # ---------------------------------------------------------------- 영상
 def render_scene(image: Path, overlay: Path, duration: float, out: Path, idx: int,
-                 size: tuple[int, int] = (1080, 1920), fps: int = 30) -> None:
+                 size: tuple[int, int] = (1080, 1920), fps: int = 30, kind: str = "image") -> None:
     w, h = size
     n = max(int(round(duration * fps)), 1)
+    if kind == "video":
+        # 실제 촬영 클립: 9:16 로 꽉 차게 크롭, 짧으면 반복, 원본 오디오 제거, 살짝 줌인으로 움직임 보강
+        fc = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fps},"
+              f"scale=w='{w}*(1+0.06*t/{max(duration, 0.1):.3f})':h=-2:eval=frame,crop={w}:{h},setsar=1[bg];"
+              f"[bg][1:v]overlay=0:0,format=yuv420p[v]")
+        run_ffmpeg(["-stream_loop", "-1", "-i", str(image), "-i", str(overlay), "-filter_complex", fc,
+                    "-map", "[v]", "-an", "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264",
+                    "-preset", "veryfast", "-crf", "18", str(out)])
+        return
     sw, sh = int(w * 1.5) // 2 * 2, int(h * 1.5) // 2 * 2  # 업스케일 후 zoompan → 떨림 감소
     motion = idx % 4
     if motion == 0:  # 중앙 줌인

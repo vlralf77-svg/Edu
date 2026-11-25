@@ -19,9 +19,10 @@ SCENE_SCHEMA = {
         "narration": {"type": "string"},
         "on_screen_text": {"type": "string"},
         "visual_query": {"type": "string"},
+        "visual_subject": {"type": "string"},
         "seconds": {"type": "number"},
     },
-    "required": ["idx", "narration", "on_screen_text", "visual_query", "seconds"],
+    "required": ["idx", "narration", "on_screen_text", "visual_query", "visual_subject", "seconds"],
     "additionalProperties": False,
 }
 

@@ -9,7 +9,8 @@
    - investment: 투자 권유·수익 단정 문장
    - unsupported: 근거가 없어 고치거나 삭제한 문장
    - sensitive: 사건·사고 피해자, 미성년자 등 민감 정보
-4. 장면 구조(idx, on_screen_text, visual_query, seconds)는 유지하되 필요한 경우 narration 과 on_screen_text 만 수정한다.
+4. 장면 구조(idx, on_screen_text, visual_query, visual_subject, seconds)는 유지하되 필요한 경우 narration 과 on_screen_text 만 수정한다.
+   visual_subject 에 사건·사고 피해자, 미성년자, 일반인이 들어 있으면 빈 문자열로 바꾸고 sensitive 로 기록한다.
    장면 전체가 근거 없으면 삭제할 수 있다. 전체 낭독 길이는 {min_chars}~{max_chars}자(공백 제외)를 유지하도록 노력한다.
 
 [대본]

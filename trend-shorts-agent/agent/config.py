@@ -74,7 +74,10 @@ class ProductionCfg(BaseModel):
     tts_provider: str = "elevenlabs"
     voice_id: str = ""
     elevenlabs_model: str = "eleven_multilingual_v2"
-    visual_source: str = "pexels"
+    visual_sources: list[str] = Field(
+        default_factory=lambda: ["commons", "pexels_video", "pixabay_video", "pexels", "pixabay"])
+    commons_max_per_subject: int = 2
+    max_clip_mb: float = 80
     burn_subtitles: bool = True
     subtitle_max_chars: int = 14
     font_path: str = ""

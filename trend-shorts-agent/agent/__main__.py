@@ -177,13 +177,15 @@ def bgm_samples(seconds: float = 30, out: Path = typer.Option(Path("data/bgm_sam
 
 @app.command()
 def sample(tts: str = typer.Option("dummy", help="dummy | elevenlabs | google"),
-           visuals: str = typer.Option("generated", help="generated | pexels | pixabay")):
+           visuals: str = typer.Option("none", help="none(카드만) | all(설정의 visual_sources) | 쉼표로 소스 지정")):
     """API 키 없이 샘플 대본 1개로 전체 제작 파이프라인 시연 (Phase 5 확인용)"""
     from .context import RunContext
     from .models import Script, Topic
     from .pipeline import produce as _p
     st = get_settings().model_copy(deep=True)
-    st.production.tts_provider, st.production.visual_source = tts, visuals
+    st.production.tts_provider = tts
+    if visuals != "all":
+        st.production.visual_sources = [] if visuals == "none" else visuals.split(",")
     script = json.loads((Path(__file__).parent / "samples" / "sample_script.json").read_text(encoding="utf-8"))
     from .writing.script_writer import normalize_script
     script = normalize_script(script, script["topic_id"], st.script.chars_per_second, set(script["sources"]))

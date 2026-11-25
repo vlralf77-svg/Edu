@@ -19,7 +19,7 @@ from .bgm.mood import analyze_mood
 from .fonts import find_font, family_name
 from .subtitles import build_cues, write_ass, write_srt
 from .tts.base import TTSResult, Word, get_provider, to_wav, wav_duration
-from .visuals import fetch_visual, title_overlay
+from .visuals import VisualFetcher, title_overlay
 
 log = logging.getLogger(__name__)
 SCENE_GAP = 0.25   # 장면 사이 숨 고르기
@@ -132,10 +132,18 @@ def make_bgm(ctx, script: dict, duration: float, out_dir: Path) -> tuple[Path | 
 def build_description(script: dict, visuals: list[dict], bgm_meta: dict) -> str:
     lines = [script.get("title", ""), ""]
     lines += ["📚 출처"] + [f"- {u}" for u in script.get("sources", [])]
-    credits = sorted({f"{v['source']}: {v.get('author', '')} {v.get('page', '')}".strip()
-                      for v in visuals if v.get("source") in ("pexels", "pixabay")})
+    credits = []
+    for v in visuals:
+        if v.get("source") == "wikimedia_commons":  # CC BY/BY-SA 는 저작자·라이선스 표기 의무
+            c = f"\"{v.get('title', '').removeprefix('File:')}\" by {v.get('author')}, {v.get('license')}, via Wikimedia Commons {v.get('page', '')}"
+        elif v.get("source") in ("pexels", "pixabay"):
+            c = f"{v['source'].capitalize()} — {v.get('author', '')} {v.get('page', '')}"
+        else:
+            continue
+        if c.strip() not in credits:
+            credits.append(c.strip())
     if credits:
-        lines += ["", "📷 이미지"] + [f"- {c}" for c in credits]
+        lines += ["", "🎞 영상·이미지 출처"] + [f"- {c}" for c in credits]
     if bgm_meta.get("type") == "library" and bgm_meta.get("attribution"):
         lines += ["", f"🎵 음악: {bgm_meta['attribution']}"]
     lines += ["", "※ 이 영상은 AI 도구(대본 작성·음성 합성)를 활용해 제작되었습니다.", "", " ".join(script.get("hashtags", []))]
@@ -160,16 +168,18 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
         narration = work / "narration.wav"
         starts, durs, words, total = build_narration(results, narration)
         # 2) 비주얼 + 상단 타이틀
-        visuals, clips, used = [], [], set()
+        visuals, clips = [], []
+        fetcher = VisualFetcher(p.visual_sources, size, p.font_path, clients=stock_search,
+                                max_per_subject=p.commons_max_per_subject, max_clip_mb=p.max_clip_mb)
         for sc, dur in zip(scenes, durs):
-            img, ov = work / f"scene_{sc['idx']:02d}.jpg", work / f"title_{sc['idx']:02d}.png"
-            vis = fetch_visual(sc, img, size, p.visual_source, used, stock_search, p.font_path)
+            ov = work / f"title_{sc['idx']:02d}.png"
+            vis = fetcher.fetch(sc, work / f"scene_{sc['idx']:02d}", dur)
             visuals.append(vis)
             # 타이포그래피 카드는 화면 텍스트를 이미 크게 보여주므로 상단 타이틀 생략
-            title_overlay("" if vis.get("kind") == "typography" else sc.get("on_screen_text", ""), size, ov,
+            title_overlay("" if vis.get("kind") == "card" else sc.get("on_screen_text", ""), size, ov,
                           p.font_path)
             clip = work / f"clip_{sc['idx']:02d}.mp4"
-            composer.render_scene(img, ov, dur, clip, sc["idx"], size, p.fps)
+            composer.render_scene(Path(vis["path"]), ov, dur, clip, sc["idx"], size, p.fps, kind=vis["kind"])
             clips.append(clip)
         video_only = work / "video_only.mp4"
         composer.concat_videos(clips, video_only)

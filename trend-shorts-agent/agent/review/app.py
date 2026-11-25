@@ -46,7 +46,8 @@ for rank, (topic, script) in enumerate(items, 1):
             st.caption(" ".join(j.get("hashtags", [])))
             edited_scenes = []
             for sc in j.get("scenes", []):
-                txt = st.text_area(f"장면 {sc['idx']} · [{sc['on_screen_text']}] · {sc['visual_query']}",
+                txt = st.text_area(f"장면 {sc['idx']} · [{sc['on_screen_text']}] · 🎞 {sc['visual_query']}"
+                                   + (f" · 👤 {sc['visual_subject']}" if sc.get("visual_subject") else ""),
                                    sc["narration"], key=f"n-{script.id}-{sc['idx']}", height=70)
                 edited_scenes.append({**sc, "narration": txt})
         with c2:
