@@ -57,7 +57,8 @@ script:
 production:
   resolution: [1080, 1920]
   fps: 30
-  tts_provider: elevenlabs    # elevenlabs | google | dummy(오프라인 테스트용)
+  tts_provider: elevenlabs    # elevenlabs | edge(무료·키 불필요, 비공식) | google | dummy(오프라인 테스트용)
+  edge_voice: ko-KR-SunHiNeural   # edge 일 때: ko-KR-SunHiNeural(여) / ko-KR-InJoonNeural(남) / ko-KR-HyunsuMultilingualNeural(남)
   voice_id: ""
   elevenlabs_model: eleven_multilingual_v2
   # 장면 비주얼 우선순위. 앞에서 못 찾으면 다음 소스, 전부 실패하면 키워드 타이포그래피 카드

@@ -202,10 +202,14 @@ elif page == PAGES[3]:
             approval = st.toggle("사람이 승인한 것만 제작 (권장)", s.review.require_approval)
             auto_n = st.number_input("승인 없이 자동 제작할 개수 (위 옵션 끈 경우)", 1, 10, s.review.auto_produce_top_n)
         with c2:
-            tts = st.selectbox("음성 서비스", ["elevenlabs", "google", "dummy"],
-                               index=["elevenlabs", "google", "dummy"].index(s.production.tts_provider),
-                               format_func={"elevenlabs": "ElevenLabs", "google": "Google Cloud TTS",
-                                            "dummy": "테스트용(실제 목소리 아님)"}.get)
+            TTS = {"edge": "Microsoft Edge 음성 (무료·키 불필요, 비공식)", "elevenlabs": "ElevenLabs",
+                   "google": "Google Cloud TTS", "dummy": "테스트용(실제 목소리 아님)"}
+            tts = st.selectbox("음성 서비스", list(TTS), index=list(TTS).index(s.production.tts_provider)
+                               if s.production.tts_provider in TTS else 0, format_func=TTS.get)
+            from agent.production.tts.edge import KOREAN_VOICES
+            evoice = st.selectbox("Edge 목소리 (Edge 선택 시)", list(KOREAN_VOICES),
+                                  index=list(KOREAN_VOICES).index(s.production.edge_voice)
+                                  if s.production.edge_voice in KOREAN_VOICES else 0, format_func=KOREAN_VOICES.get)
             voice = st.text_input("ElevenLabs 보이스 ID", s.production.voice_id)
             vis = st.multiselect("화면 소스 (위에서부터 우선)", list(VIS), s.production.visual_sources, format_func=VIS.get)
             cats = st.multiselect("수집 카테고리 (비우면 전체)", [25, 24, 28, 17, 10, 20, 22, 26],
@@ -223,7 +227,8 @@ elif page == PAGES[3]:
                 "topics": {"max_topics_per_day": topics}, "budget": {"max_daily_cost_usd": float(cost)},
                 "llm": {"provider": provider, "gemini_model": gmodel.strip(), "model": model}, "schedule": {"run_at": run_at.strftime("%H:%M")},
                 "review": {"require_approval": approval, "auto_produce_top_n": int(auto_n)},
-                "production": {"tts_provider": tts, "voice_id": voice.strip(), "visual_sources": vis},
+                "production": {"tts_provider": tts, "voice_id": voice.strip(), "visual_sources": vis,
+                               "edge_voice": evoice},
                 "collect": {"category_ids": cats, "exclude_keywords": [x.strip() for x in excl.split(",") if x.strip()]},
                 "notify": {"enabled": notify_on},
                 "research": {"provider": rprov},

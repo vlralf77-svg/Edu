@@ -44,7 +44,7 @@ def _speed_adjust(results: list[TTSResult], speed: float, tmp_dir: Path) -> list
 def synthesize_scenes(ctx, scenes: list[dict], out_dir: Path, tts=None) -> list[TTSResult]:
     p = ctx.settings.production
     budget = ctx.settings.script.max_seconds
-    tts = tts or get_provider(p.tts_provider, p.voice_id, model_id=p.elevenlabs_model,
+    tts = tts or get_provider(p.tts_provider, p.voice_id, model_id=p.elevenlabs_model, edge_voice=p.edge_voice,
                               chars_per_second=ctx.settings.script.chars_per_second)
 
     def run(speed: float) -> list[TTSResult]:

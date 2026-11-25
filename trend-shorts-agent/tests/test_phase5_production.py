@@ -166,8 +166,8 @@ def test_elevenlabs_auto_picks_voice_when_empty(monkeypatch, tmp_path):
             {"voice_id": "v-en", "name": "Adam", "category": "premade", "labels": {"accent": "american"}},
             {"voice_id": "v-ko", "name": "지수", "category": "professional", "labels": {"language": "ko"}}]})
     tts = ElevenLabsTTS("", http=httpx.Client(transport=httpx.MockTransport(handler)))
-    assert tts.voice_id == "v-ko"
-    assert "v-ko" in (tmp_path / "local.yaml").read_text(encoding="utf-8")
+    assert tts.voice_id == "v-en"   # 무료 플랜도 API 로 쓸 수 있는 기본(premade) 목소리 우선
+    assert "v-en" in (tmp_path / "local.yaml").read_text(encoding="utf-8")
 
 
 def test_elevenlabs_voice_list_failure_explains(monkeypatch):
@@ -177,3 +177,74 @@ def test_elevenlabs_voice_list_failure_explains(monkeypatch):
     http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(401, json={})))
     with pytest.raises(RuntimeError, match="보이스 ID"):
         ElevenLabsTTS("", http=http)
+
+
+def _mp3_bytes(tmp_path, secs=1.0):
+    import subprocess
+    p = tmp_path / "t.mp3"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"sine=d={secs}", str(p)], check=True)
+    return p.read_bytes()
+
+
+def test_elevenlabs_402_falls_back_to_premade_voice(monkeypatch, tmp_path):
+    import base64
+    import httpx
+    from agent import config as cfg
+    from agent.production.tts.elevenlabs import ElevenLabsTTS
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "ek")
+    monkeypatch.setattr(cfg, "LOCAL_SETTINGS", tmp_path / "local.yaml")
+    audio = base64.b64encode(_mp3_bytes(tmp_path)).decode()
+    used = []
+
+    def handler(req):
+        if req.url.path == "/v1/voices":
+            return httpx.Response(200, json={"voices": [{"voice_id": "lib", "category": "professional"},
+                                                        {"voice_id": "pre", "category": "premade"}]})
+        vid = req.url.path.split("/")[3]
+        used.append(vid)
+        if vid == "lib":
+            return httpx.Response(402, json={"detail": {"status": "payment_required",
+                                                        "message": "Free users cannot use library voices via the API"}})
+        return httpx.Response(200, json={"audio_base64": audio, "alignment": {
+            "characters": list("안녕"), "character_start_times_seconds": [0, .3],
+            "character_end_times_seconds": [.3, .6]}})
+    tts = ElevenLabsTTS("lib", http=httpx.Client(transport=httpx.MockTransport(handler)))
+    res = tts.synthesize("안녕", tmp_path / "o.wav")
+    assert used == ["lib", "pre"] and res.duration > 0.5 and res.words[0].text == "안녕"
+    assert "pre" in (tmp_path / "local.yaml").read_text(encoding="utf-8")
+
+
+def test_elevenlabs_402_no_credits_suggests_edge(monkeypatch, tmp_path):
+    import httpx
+    from agent.production.tts.elevenlabs import ElevenLabsTTS
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "ek")
+
+    def handler(req):
+        if req.url.path == "/v1/voices":
+            return httpx.Response(200, json={"voices": [{"voice_id": "pre", "category": "premade"}]})
+        return httpx.Response(402, json={"detail": {"message": "quota exceeded"}})
+    tts = ElevenLabsTTS("pre", http=httpx.Client(transport=httpx.MockTransport(handler)))
+    with pytest.raises(RuntimeError, match="Edge"):
+        tts.synthesize("안녕", tmp_path / "o.wav")
+
+
+def test_edge_tts_word_timestamps(monkeypatch, tmp_path):
+    import edge_tts
+    from agent.production.tts.base import get_provider
+    data = _mp3_bytes(tmp_path, 1.5)
+    seen = {}
+
+    class FakeCommunicate:
+        def __init__(self, text, voice, rate="+0%", boundary="SentenceBoundary"):
+            seen.update(voice=voice, rate=rate, boundary=boundary)
+
+        async def stream(self):
+            yield {"type": "WordBoundary", "offset": 1_000_000, "duration": 4_000_000, "text": "안녕하세요"}
+            yield {"type": "audio", "data": data}
+            yield {"type": "WordBoundary", "offset": 6_000_000, "duration": 3_000_000, "text": "여러분"}
+    monkeypatch.setattr(edge_tts, "Communicate", FakeCommunicate)
+    tts = get_provider("edge", edge_voice="ko-KR-InJoonNeural")
+    res = tts.synthesize("안녕하세요 여러분", tmp_path / "e.wav", speed=1.1)
+    assert seen == {"voice": "ko-KR-InJoonNeural", "rate": "+10%", "boundary": "WordBoundary"}
+    assert [(w.text, w.start, w.end) for w in res.words] == [("안녕하세요", 0.1, 0.5), ("여러분", 0.6, 0.9)]
+    assert 1.3 < res.duration < 1.7

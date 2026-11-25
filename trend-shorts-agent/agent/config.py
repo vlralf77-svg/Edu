@@ -85,6 +85,7 @@ class ProductionCfg(BaseModel):
     tts_provider: str = "elevenlabs"
     voice_id: str = ""
     elevenlabs_model: str = "eleven_multilingual_v2"
+    edge_voice: str = "ko-KR-SunHiNeural"
     visual_sources: list[str] = Field(
         default_factory=lambda: ["commons", "pixabay_video", "pexels_video", "pixabay", "pexels"])
     commons_max_per_subject: int = 2

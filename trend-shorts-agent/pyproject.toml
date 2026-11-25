@@ -17,6 +17,7 @@ dependencies = [
     "soundfile>=0.12",
     "pillow>=10.0",
     "apscheduler>=3.10,<4",
+    "edge-tts>=7.0",
 ]
 
 [project.optional-dependencies]

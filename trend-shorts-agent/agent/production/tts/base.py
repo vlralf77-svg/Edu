@@ -82,6 +82,9 @@ def get_provider(name: str, voice_id: str = "", **kw) -> TTSProvider:
     if name == "google":
         from .google import GoogleTTS
         return GoogleTTS(voice_id=voice_id)
+    if name == "edge":
+        from .edge import EdgeTTS
+        return EdgeTTS(kw.get("edge_voice", ""))
     if name == "dummy":
         from .dummy import DummyTTS
         return DummyTTS(**{k: v for k, v in kw.items() if k == "chars_per_second"})
