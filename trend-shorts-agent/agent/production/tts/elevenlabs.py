@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config import env
 from .base import TTSProvider, TTSResult, chars_to_words, to_wav, wav_duration
 
+log = logging.getLogger(__name__)
 API = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/with-timestamps"
 
 
@@ -22,10 +24,34 @@ class ElevenLabsTTS(TTSProvider):
         self.key = env("ELEVENLABS_API_KEY")
         if not self.key:
             raise RuntimeError("ELEVENLABS_API_KEY 가 설정되지 않았습니다 (.env)")
-        if not voice_id:
-            raise RuntimeError("production.voice_id 를 settings.yaml 에 설정하세요 (ElevenLabs 보이스 ID)")
-        self.voice_id, self.model_id = voice_id, model_id
         self.http = http or httpx.Client(timeout=120)
+        self.model_id = model_id
+        self.voice_id = voice_id or self.auto_pick_voice()
+
+    def auto_pick_voice(self) -> str:
+        """보이스 ID 가 비어 있으면 계정의 목소리 중 하나를 골라 설정에 저장 (한국어 라벨 우선)."""
+        try:
+            r = self.http.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": self.key})
+            r.raise_for_status()
+            voices = r.json().get("voices", [])
+        except httpx.HTTPError as e:
+            raise RuntimeError(
+                "ElevenLabs 보이스 ID 가 비어 있고 목소리 목록도 가져오지 못했습니다 "
+                f"({e}). ElevenLabs 사이트 ▸ Voices 에서 목소리를 골라 'ID 복사' 후 "
+                "제어판 ⚙️ 설정 ▸ 'ElevenLabs 보이스 ID' 에 붙여넣으세요.") from e
+        if not voices:
+            raise RuntimeError("ElevenLabs 계정에 쓸 수 있는 목소리가 없습니다. 사이트 ▸ Voices 에서 목소리를 추가하세요.")
+
+        def rank(v):
+            labels = " ".join(str(x) for x in (v.get("labels") or {}).values()).lower()
+            korean = "korean" in labels or "ko" == (v.get("labels") or {}).get("language", "")
+            return (not korean, v.get("category") != "premade")
+        best = sorted(voices, key=rank)[0]
+        from ...config import save_local_settings
+        save_local_settings({"production": {"voice_id": best["voice_id"]}})
+        log.warning("ElevenLabs 보이스 ID 가 비어 있어 '%s'(%s) 목소리를 자동 선택해 저장했습니다. "
+                    "설정 화면에서 바꿀 수 있습니다.", best.get("name"), best["voice_id"])
+        return best["voice_id"]
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=20), reraise=True)
     def _request(self, text: str, speed: float) -> dict:

@@ -151,3 +151,29 @@ def test_unapproved_script_refused(settings):
 def test_word_dataclass():
     assert Word("a", 0, 1).end == 1
     assert np.isclose(1, 1)
+
+
+def test_elevenlabs_auto_picks_voice_when_empty(monkeypatch, tmp_path):
+    import httpx
+    from agent import config as cfg
+    from agent.production.tts.elevenlabs import ElevenLabsTTS
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "ek")
+    monkeypatch.setattr(cfg, "LOCAL_SETTINGS", tmp_path / "local.yaml")
+
+    def handler(req):
+        assert req.url.path == "/v1/voices" and req.headers["xi-api-key"] == "ek"
+        return httpx.Response(200, json={"voices": [
+            {"voice_id": "v-en", "name": "Adam", "category": "premade", "labels": {"accent": "american"}},
+            {"voice_id": "v-ko", "name": "지수", "category": "professional", "labels": {"language": "ko"}}]})
+    tts = ElevenLabsTTS("", http=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert tts.voice_id == "v-ko"
+    assert "v-ko" in (tmp_path / "local.yaml").read_text(encoding="utf-8")
+
+
+def test_elevenlabs_voice_list_failure_explains(monkeypatch):
+    import httpx
+    from agent.production.tts.elevenlabs import ElevenLabsTTS
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "ek")
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(401, json={})))
+    with pytest.raises(RuntimeError, match="보이스 ID"):
+        ElevenLabsTTS("", http=http)

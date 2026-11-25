@@ -76,7 +76,8 @@ def run_checks(settings: Settings) -> list[Check]:
     if tts == "elevenlabs":
         key("ELEVENLABS_API_KEY", "ElevenLabs 키 (음성)", "elevenlabs.io")
         checks.append(Check("ElevenLabs 보이스 ID", bool(settings.production.voice_id),
-                            settings.production.voice_id or "없음", "설정 탭 > 음성 보이스 ID"))
+                            settings.production.voice_id or "비어 있음 → 첫 제작 때 계정 목소리 자동 선택",
+                            "원하는 목소리가 있으면 설정 탭 > ElevenLabs 보이스 ID", required=False))
     elif tts == "dummy":
         checks.append(Check("음성(TTS)", False, "테스트용 dummy (실제 목소리 아님)", "설정 탭에서 음성 서비스를 선택하세요"))
     try:
