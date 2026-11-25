@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+*.mp4
+*.wav
+*.mid
+assets/soundfonts/*.sf2
+config/client_secret.json

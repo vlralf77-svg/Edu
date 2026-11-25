@@ -1,0 +1,16 @@
+{
+  "topic_id": "sample-ai-phone",
+  "title": "스마트폰에 AI 비서가 기본 탑재된다면?",
+  "hashtags": ["#AI", "#스마트폰", "#테크뉴스", "#숏폼뉴스"],
+  "estimated_seconds": 56,
+  "scenes": [
+    {"idx": 1, "narration": "이제 휴대폰이 먼저 말을 거는 시대가 옵니다.", "on_screen_text": "폰이 먼저 말한다", "visual_query": "smartphone glowing screen", "seconds": 4},
+    {"idx": 2, "narration": "이번 주 여러 제조사가 기기 안에서 바로 돌아가는 AI 비서 기능을 잇따라 공개했습니다. 인터넷 연결 없이도 요약과 번역을 처리한다는 게 핵심입니다.", "on_screen_text": "온디바이스 AI", "visual_query": "microchip circuit closeup", "seconds": 13},
+    {"idx": 3, "narration": "첫째, 개인정보가 서버로 덜 나갑니다. 메시지와 사진 분석이 휴대폰 안에서 끝나기 때문입니다.", "on_screen_text": "① 개인정보 보호", "visual_query": "privacy lock phone", "seconds": 10},
+    {"idx": 4, "narration": "둘째, 반응이 빨라집니다. 통신 상태가 나빠도 기본 기능은 그대로 쓸 수 있습니다.", "on_screen_text": "② 더 빠른 반응", "visual_query": "fast motion city lights", "seconds": 9},
+    {"idx": 5, "narration": "셋째, 배터리와 발열은 아직 숙제입니다. 제조사들도 전력 효율 개선을 과제로 꼽았습니다.", "on_screen_text": "③ 배터리는 숙제", "visual_query": "battery charging icon", "seconds": 10},
+    {"idx": 6, "narration": "정리하면, 똑똑해진 만큼 관리도 중요해졌다는 얘기입니다. 여러분은 AI 비서에게 어디까지 맡기실 건가요? 댓글로 알려주세요.", "on_screen_text": "어디까지 맡길까?", "visual_query": "person thinking phone", "seconds": 11}
+  ],
+  "sources": ["https://example.com/sample-source"],
+  "risk_notes": "샘플 대본 (테스트용, 실제 사실 아님)"
+}

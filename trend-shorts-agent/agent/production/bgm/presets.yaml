@@ -1,0 +1,75 @@
+# 분위기별 작곡 파라미터. 진행(progressions)은 스케일 도수(0=I/i)의 나열 — 코드 진행 자체는 저작권 대상 아님.
+# 악기는 General MIDI 프로그램 번호(0부터). drums: none | light | full | electro | kick | soft
+upbeat:
+  tempo: [115, 128]
+  modes: [major]
+  progressions: [[0, 4, 5, 3], [0, 5, 3, 4], [3, 4, 0, 5]]
+  instruments: {pad: 4, bass: 38, arp: 80, melody: 81}   # 일렉피아노, 신스베이스, 신스리드
+  bass_pattern: eighths
+  arp_rate: 8
+  drums: full
+  energy: 0.8
+news:
+  tempo: [95, 110]
+  modes: [minor]
+  progressions: [[0, 5, 2, 6], [0, 3, 5, 4], [0, 6, 5, 6]]   # i–VI–III–VII 등
+  instruments: {pad: 48, bass: 32, arp: 0, melody: null}    # 스트링, 어쿠스틱베이스, 피아노
+  bass_pattern: halves
+  arp_rate: 8
+  drums: light
+  energy: 0.5
+tense:
+  tempo: [100, 120]
+  modes: [minor]
+  progressions: [[0, 0, 5, 4], [0, 1, 0, 6], [0, 5, 0, 4]]
+  instruments: {pad: 44, bass: 43, arp: 81, melody: null}   # 트레몰로 스트링, 콘트라베이스, 펄스 신스
+  bass_pattern: pulse
+  arp_rate: 16
+  drums: kick
+  energy: 0.7
+inspiring:
+  tempo: [90, 105]
+  modes: [major]
+  progressions: [[0, 4, 5, 3], [3, 0, 4, 5], [0, 3, 5, 4]]
+  instruments: {pad: 48, bass: 42, arp: 0, melody: 0, perc: 47}  # 스트링, 첼로, 피아노, 팀파니
+  bass_pattern: halves
+  arp_rate: 8
+  drums: none
+  timpani: true
+  energy: 0.6
+calm:
+  tempo: [75, 90]
+  modes: [major]
+  progressions: [[0, 3, 0, 4], [0, 5, 3, 4], [3, 0, 3, 4]]
+  instruments: {pad: 89, bass: 32, arp: 25, melody: null}   # 웜 패드, 어쿠스틱베이스, 어쿠스틱기타
+  bass_pattern: wholes
+  arp_rate: 8
+  drums: soft
+  energy: 0.35
+tech:
+  tempo: [110, 124]
+  modes: [minor, dorian]
+  progressions: [[0, 5, 6, 0], [0, 3, 6, 5], [0, 6, 5, 3]]
+  instruments: {pad: 90, bass: 38, arp: 81, melody: null}   # 폴리신스 패드, 신스베이스, 신스 아르페지오
+  bass_pattern: eighths
+  arp_rate: 16
+  drums: electro
+  energy: 0.7
+funny:
+  tempo: [120, 135]
+  modes: [major]
+  progressions: [[0, 3, 4, 0], [0, 5, 3, 4], [0, 4, 0, 4]]
+  instruments: {pad: 45, bass: 32, arp: 12, melody: 45}    # 피치카토, 베이스, 마림바
+  bass_pattern: bounce
+  arp_rate: 8
+  drums: full
+  energy: 0.75
+sad:
+  tempo: [65, 80]
+  modes: [minor]
+  progressions: [[0, 5, 2, 6], [0, 3, 5, 4], [5, 3, 0, 4]]
+  instruments: {pad: 42, bass: null, arp: 0, melody: null}   # 첼로 패드, 피아노 솔로
+  bass_pattern: none
+  arp_rate: 4
+  drums: none
+  energy: 0.25

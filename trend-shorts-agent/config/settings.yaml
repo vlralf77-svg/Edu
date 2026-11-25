@@ -1,0 +1,86 @@
+schedule:
+  timezone: Asia/Seoul
+  run_at: "07:00"
+
+collect:
+  region_code: KR
+  relevance_language: ko
+  published_within_hours: 48
+  min_view_count: 100000
+  max_videos: 50
+  include_shorts: true
+  category_ids: []            # 비우면 전체. 예: [25(뉴스), 24(엔터), 28(과학기술)]
+  search_queries: ["뉴스", "이슈", "속보"]   # search.list 보조 검색어 (1회당 100유닛)
+  exclude_keywords: ["도박", "성인"]
+  dedupe_days: 7
+  daily_quota: 10000
+  quota_stop_ratio: 0.8
+
+llm:
+  model: claude-opus-5-5
+  effort: medium              # low | medium | high | xhigh | max
+  max_tokens: 16000
+  fallbacks: default          # 거절(refusal) 시 서버 측 대체 모델 사용. 끄려면 null
+  max_retries: 3
+  price_per_mtok: {input: 4.0, output: 20.0}
+  web_search_price_per_1k: 10.0
+
+research:
+  provider: claude            # claude(web search 툴) | tavily | serper
+  searches_per_topic: 4
+  min_sources: 2
+
+topics:
+  max_topics_per_day: 10
+  min_videos_per_topic: 1
+  weights: {total_views: 0.35, views_per_hour: 0.35, video_count: 0.1, fitness: 0.2}
+
+script:
+  max_seconds: 60
+  target_chars_ko: 300        # 한국어 낭독 기준 약 280~320자 ≈ 55~60초
+  chars_per_second: 5.2
+  max_rewrites: 2
+  tone: "친근하고 빠른 뉴스 브리핑"
+  structure: [hook, context, key_points, closing]
+
+production:
+  resolution: [1080, 1920]
+  fps: 30
+  tts_provider: elevenlabs    # elevenlabs | google | dummy(오프라인 테스트용)
+  voice_id: ""
+  elevenlabs_model: eleven_multilingual_v2
+  visual_source: pexels      # pexels | pixabay | generated(타이포그래피 카드)
+  burn_subtitles: true
+  subtitle_max_chars: 14
+  font_path: ""               # 비우면 assets/fonts → 시스템 Noto Sans CJK 순으로 탐색
+  max_tts_speed: 1.15
+
+bgm:
+  mode: generate              # generate | library | hybrid
+  volume: 0.08
+  sad_volume: 0.05
+  sad_disable: false          # true면 sad(추모·재난) 주제는 BGM 없이
+  ducking_db: -12
+  fade_in_sec: 0.5
+  fade_out_sec: 1.5
+  soundfont: assets/soundfonts/FluidR3_GM.sf2   # MIT 라이선스 사운드폰트
+  library_dir: assets/bgm/library
+  avoid_repeat_days: 7
+
+review:
+  require_approval: true
+  auto_produce_top_n: 3
+
+notify:
+  enabled: false
+
+publish:
+  enabled: false
+  privacy: private
+
+budget:
+  max_daily_cost_usd: 5.0
+
+paths:
+  data_dir: data
+  db_url: ""                  # 비우면 sqlite:///data/agent.db
