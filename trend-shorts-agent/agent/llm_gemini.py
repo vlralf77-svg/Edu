@@ -71,6 +71,14 @@ def pick_flash_model(names: list[str]) -> str | None:
     return max(cands)[1] if cands else None
 
 
+class _Busy(LLMError):
+    """혼잡(5xx)·한도(429)·모델 없음 — 다른 모델로 넘어갈 수 있는 실패."""
+
+    def __init__(self, status: int, msg: str):
+        super().__init__(msg)
+        self.status = status
+
+
 class GeminiLLM:
     def __init__(self, settings: Settings, tracker: CostTracker | None = None, http: httpx.Client | None = None,
                  sleep=time.sleep):
@@ -95,34 +103,76 @@ class GeminiLLM:
             self._last_call = time.monotonic()
 
     def _post(self, body: dict) -> dict:
+        """현재 모델로 시도 → 혼잡(503)·한도(429)가 계속되면 다른 무료 모델로 자동 전환."""
+        tried: set[str] = set()
+        last: Exception | None = None
+        while True:
+            try:
+                return self._post_model(body)
+            except _Busy as e:
+                last = e
+                tried.add(self.model)
+                nxt = self._next_fallback(tried)
+                if not nxt:
+                    break
+                log.warning("Gemini '%s' 사용 불가(%s) → 무료 모델 '%s' 로 전환", self.model, e.status, nxt)
+                self.model = nxt
+        hint = (" — 무료 등급 하루 사용량을 다 썼을 수 있습니다. 내일 다시 실행하거나 하루 주제 수를 줄이세요."
+                if getattr(last, "status", 0) == 429 else
+                " — 구글 무료 서버가 혼잡합니다. 10~30분 뒤 다시 실행하면 완료된 단계는 건너뛰고 이어서 진행합니다.")
+        raise LLMError(f"Gemini API 오류 {getattr(last, 'status', '')}: {last}{hint} (시도한 모델: {', '.join(sorted(tried))})")
+
+    def _post_model(self, body: dict) -> dict:
         delay = 5.0
-        for attempt in range(self.cfg.max_retries + 2):
+        retries = self.cfg.gemini_retries
+        for attempt in range(retries + 1):
             self._throttle()
             try:
                 r = self.http.post(f"{API}/models/{self.model}:generateContent", json=body,
                                    headers={"x-goog-api-key": self.key})
             except httpx.TransportError as e:
-                if attempt >= self.cfg.max_retries:
-                    raise LLMError(f"Gemini 연결 실패: {e}") from e
+                if attempt >= retries:
+                    raise LLMError(f"Gemini 연결 실패 (인터넷 연결 확인): {e}") from e
                 self.sleep(delay)
-                delay *= 2
+                delay = min(delay * 2, 60)
                 continue
-            if r.status_code == 404 and not self._model_checked:
-                self._switch_model()
-                continue
-            if r.status_code in (429, 500, 502, 503, 504) and attempt < self.cfg.max_retries + 1:
-                wait = self._retry_delay(r) or delay
-                log.warning("Gemini %d → %.0f초 후 재시도 (무료 등급 호출 제한일 수 있음)", r.status_code, wait)
-                self.sleep(wait)
-                delay = min(delay * 2, 120)
-                continue
+            if r.status_code == 404:
+                if not self._model_checked and self.model == self.cfg.gemini_model:
+                    self._switch_model()
+                    continue
+                raise _Busy(404, f"모델 '{self.model}' 없음")
+            msg = ""
             if r.status_code >= 400:
-                msg = r.json().get("error", {}).get("message", r.text[:300]) if r.content else ""
-                if r.status_code == 429:
-                    msg += " — 무료 등급 하루 사용량을 다 썼을 수 있습니다. 내일 다시 실행하거나 주제 수를 줄이세요."
-                raise LLMError(f"Gemini API 오류 {r.status_code}: {msg}", )
+                try:
+                    msg = r.json().get("error", {}).get("message", "")
+                except ValueError:
+                    msg = r.text[:300]
+            if r.status_code in (429, 500, 502, 503, 504):
+                daily = r.status_code == 429 and "per day" in msg.lower()
+                if attempt < retries and not daily:
+                    wait = self._retry_delay(r) or delay
+                    log.warning("Gemini %d (혼잡/분당 한도) → %.0f초 후 재시도 [%d/%d]", r.status_code, wait,
+                                attempt + 1, retries)
+                    self.sleep(wait)
+                    delay = min(delay * 2, 60)
+                    continue
+                raise _Busy(r.status_code, msg or r.reason_phrase)
+            if r.status_code >= 400:
+                raise LLMError(f"Gemini API 오류 {r.status_code}: {msg}")
             return r.json()
-        raise LLMError("Gemini API 재시도 횟수 초과")
+        raise _Busy(0, "재시도 횟수 초과")
+
+    def _next_fallback(self, tried: set[str]) -> str | None:
+        for m in self.cfg.gemini_fallback_models:
+            if m not in tried:
+                return m
+        try:  # 설정 목록이 다 막히면 계정에서 쓸 수 있는 다른 flash 계열 자동 선택
+            names = [n.removeprefix("models/") for n in self.list_models()]
+        except httpx.HTTPError:
+            return None
+        flash = [n for n in names if "flash" in n and n not in tried
+                 and not re.search(r"(image|tts|live|audio|embed|exp|preview)", n)]
+        return pick_flash_model(flash) or (flash[0] if flash else None)
 
     @staticmethod
     def _retry_delay(r: httpx.Response) -> float | None:

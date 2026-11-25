@@ -129,3 +129,37 @@ def test_idempotent_rerun_skips_completed_steps(settings, yt_transport):
     with RunContext("2026-11-25", settings, llm=llm) as ctx:
         step_cluster(ctx, force=True)
     assert llm.calls[-1] == "cluster"
+
+
+def test_rerun_retries_only_failed_topics(settings, yt_transport):
+    """Gemini 혼잡 등으로 일부 주제만 실패 → 같은 날 다시 실행하면 그 주제만 이어서 처리."""
+    class Flaky(FakeLLM):
+        def __init__(self):
+            super().__init__()
+            self.fail = {"research": 1, "write": 1}
+
+        def complete_json(self, prompt, **kw):
+            stage = "research" if "팩트 조사원" in prompt else "write" if "숏폼 뉴스 브리핑 작가" in prompt else None
+            if stage and self.fail.get(stage):
+                self.fail[stage] -= 1
+                raise RuntimeError("503 high demand")
+            return super().complete_json(prompt, **kw)
+
+    llm = Flaky()
+    with RunContext("2026-11-25", settings, llm=llm) as ctx:
+        _collect(ctx, yt_transport)
+        step_cluster(ctx)
+        step_research(ctx)
+        step_write(ctx)
+        st = {t.key: t.status for t in ctx.session.query(Topic)}
+        assert sorted(st.values()) == ["failed", "failed"]   # 하나는 조사 실패, 하나는 대본 실패
+    before = list(llm.calls)
+    with RunContext("2026-11-25", settings, llm=llm) as ctx:
+        step_collect(ctx)
+        step_cluster(ctx)
+        step_research(ctx)
+        step_write(ctx)
+        st = {t.key: t.status for t in ctx.session.query(Topic)}
+        assert set(st.values()) == {"checked"}
+    new = llm.calls[len(before):]
+    assert "cluster" not in new and new.count("research") == 1   # 이미 끝난 일은 다시 하지 않음

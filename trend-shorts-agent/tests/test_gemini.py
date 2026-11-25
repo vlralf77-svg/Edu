@@ -129,10 +129,42 @@ def test_rate_limit_retry_then_success(gem):
 
 
 def test_daily_quota_exhausted_message(gem, settings):
-    settings.llm.max_retries = 1
+    settings.llm.gemini_retries = 1
+    settings.llm.gemini_fallback_models = []
     srv = Server([(429, {"error": {"message": "quota"}})] * 3)
     with pytest.raises(LLMError, match="하루 사용량"):
         gem(srv).complete("q")
+
+
+def test_overloaded_switches_to_fallback_model(gem, settings):
+    settings.llm.gemini_retries = 2
+    busy = (503, {"error": {"message": "This model is currently experiencing high demand."}})
+    srv = Server([busy, busy, busy, (200, ok('{"ok": true}'))])
+    llm = gem(srv)
+    data, _ = llm.complete_json("q")
+    assert data == {"ok": True} and llm.model == "gemini-2.5-flash-lite"
+    assert [u.split("/models/")[1].split(":")[0] for u, _, _ in srv.requests] == \
+        ["gemini-2.5-flash"] * 3 + ["gemini-2.5-flash-lite"]
+    # 이후 호출은 전환된 모델 유지
+    srv.responses.append((200, ok('{"x": 1}')))
+    llm.complete_json("q2")
+    assert "gemini-2.5-flash-lite" in srv.requests[-1][0]
+
+
+def test_daily_quota_on_one_model_uses_another(gem, settings):
+    srv = Server([(429, {"error": {"message": "Quota exceeded for metric: requests per day"}}), (200, ok('{"a": 1}'))])
+    llm = gem(srv)
+    assert llm.complete_json("q")[0] == {"a": 1} and llm.model == "gemini-2.5-flash-lite"
+    assert len(srv.requests) == 2                      # 하루 한도는 같은 모델 재시도 없이 바로 전환
+
+
+def test_all_models_busy_gives_friendly_message(gem, settings):
+    settings.llm.gemini_retries = 0
+    busy = (503, {"error": {"message": "high demand"}})
+    srv = Server([busy] * 5, models=["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"])
+    with pytest.raises(LLMError, match="혼잡") as e:
+        gem(srv).complete("q")
+    assert "gemini-2.0-flash" in str(e.value)
 
 
 def test_blocked_prompt_is_refusal(gem):

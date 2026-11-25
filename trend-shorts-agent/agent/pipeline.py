@@ -32,8 +32,30 @@ def step_cluster(ctx: RunContext, force: bool = False):
         return cluster(ctx)
 
 
+def _requeue_failed(ctx: RunContext) -> int:
+    """앞선 실행에서 일시적 오류로 실패한 주제를 실패한 단계부터 다시 하도록 되돌린다."""
+    n = 0
+    for t in ctx.session.scalars(select(Topic).where(Topic.run_id == ctx.run.id, Topic.status == "failed")):
+        if not t.research:
+            continue  # 조사 단계 실패 → step_research 가 직접 다시 시도
+        t.status = "scripted" if t.scripts else "researched"
+        n += 1
+    if n:
+        ctx.session.commit()
+        log.info("이전에 실패한 주제 %d개를 다시 시도합니다", n)
+    return n
+
+
+def _failed_research(ctx: RunContext) -> bool:
+    # JSON 컬럼의 None 은 SQL NULL 이 아니라 'null' 로 저장될 수 있어 파이썬에서 판정
+    return any(not t.research for t in ctx.session.scalars(
+        select(Topic).where(Topic.run_id == ctx.run.id, Topic.status == "failed")))
+
+
 def step_research(ctx: RunContext, force: bool = False):
-    if ctx.step_done("researched") and not force:
+    if ctx.step_done("researched") and not force and _failed_research(ctx):
+        log.info("조사: 이전에 실패한 주제만 다시 시도")
+    elif ctx.step_done("researched") and not force:
         log.info("조사: 이미 완료 → 건너뜀")
         return None
     from .analysis.research import research
@@ -42,12 +64,16 @@ def step_research(ctx: RunContext, force: bool = False):
 
 
 def step_write(ctx: RunContext, force: bool = False):
-    if ctx.step_done("checked") and not force:
+    _requeue_failed(ctx)
+    if ctx.step_done("checked") and not force and not ctx.session.scalar(
+            select(Topic.id).where(Topic.run_id == ctx.run.id, Topic.status.in_(["researched", "scripted"])).limit(1)):
         log.info("대본·팩트체크: 이미 완료 → 건너뜀")
         return None
     from .writing.fact_checker import fact_check
     from .writing.script_writer import write
-    if force or not ctx.step_done("scripted"):
+    pending = lambda st: ctx.session.scalar(select(Topic.id).where(  # noqa: E731
+        Topic.run_id == ctx.run.id, Topic.status == st).limit(1)) is not None
+    if force or not ctx.step_done("scripted") or pending("researched"):
         if force:  # 재작성 대상 되돌리기
             for t in ctx.session.scalars(select(Topic).where(Topic.run_id == ctx.run.id,
                                                              Topic.status.in_(["scripted", "checked"]))):

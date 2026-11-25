@@ -18,6 +18,8 @@ PROMPTS_DIR = CONFIG_DIR / "prompts"
 class ScheduleCfg(BaseModel):
     timezone: str = "Asia/Seoul"
     run_at: str = "07:00"
+    retry_count: int = 2          # 자동 실행이 실패하면 다시 시도할 횟수
+    retry_wait_min: int = 20      # 재시도 전 대기(분)
 
 
 class CollectCfg(BaseModel):
@@ -39,6 +41,8 @@ class LLMCfg(BaseModel):
     provider: Literal["gemini", "claude"] = "gemini"
     gemini_model: str = "gemini-2.5-flash"
     gemini_min_interval_sec: float = 6.0
+    gemini_retries: int = 4                     # 같은 모델 재시도 횟수 (5→10→20→40초…최대 60초 간격)
+    gemini_fallback_models: list[str] = Field(default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-2.0-flash"])
     gemini_price_per_mtok: dict[str, float] = Field(default_factory=lambda: {"input": 0.0, "output": 0.0})
     model: str = "claude-opus-5-5"
     effort: str = "medium"

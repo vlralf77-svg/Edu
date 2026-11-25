@@ -11,6 +11,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -73,7 +74,7 @@ def is_due(settings: Settings, now: datetime | None = None) -> bool:
     return (now.hour, now.minute) >= (hh, mm) and not done_marker(settings, now.strftime("%Y-%m-%d")).exists()
 
 
-def daily_job(settings: Settings | None = None, run_fn=None, if_due: bool = False) -> str | None:
+def daily_job(settings: Settings | None = None, run_fn=None, if_due: bool = False, sleep=None) -> str | None:
     """하루 1회 보장: 완료 마커가 있으면 건너뜀. 동시에 두 번 뜨면 락으로 막음."""
     settings = settings or get_settings()
     run_date = today(settings)
@@ -90,7 +91,7 @@ def daily_job(settings: Settings | None = None, run_fn=None, if_due: bool = Fals
         with file_lock(settings.data_dir / "daily.lock"):
             if marker.exists():
                 return None
-            run_fn(run_date, settings=settings)
+            _run_with_retry(run_fn, run_date, settings, sleep or time.sleep)
             marker.parent.mkdir(parents=True, exist_ok=True)
             marker.write_text("ok", encoding="utf-8")
             return run_date
@@ -101,6 +102,23 @@ def daily_job(settings: Settings | None = None, run_fn=None, if_due: bool = Fals
         log.exception("일일 실행 실패")
         notify(f"⚠️ 일일 실행 실패 ({run_date}): {type(e).__name__}: {e}", True)
         return None
+
+
+def _run_with_retry(run_fn, run_date: str, settings: Settings, sleep) -> None:
+    """일시적 실패(서버 혼잡 등)면 기다렸다가 다시. 같은 날 재실행은 완료된 단계를 건너뛰고 이어서 진행."""
+    from .costs import BudgetExceeded
+    retries, wait_min = settings.schedule.retry_count, settings.schedule.retry_wait_min
+    for attempt in range(retries + 1):
+        try:
+            run_fn(run_date, settings=settings)
+            return
+        except BudgetExceeded:
+            raise
+        except Exception as e:  # noqa: BLE001
+            if attempt >= retries:
+                raise
+            log.warning("실행 실패(%s) → %d분 뒤 다시 시도 [%d/%d]", e, wait_min, attempt + 1, retries)
+            sleep(wait_min * 60)
 
 
 # ---------------------------------------------------------------- 방법 B: APScheduler

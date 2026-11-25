@@ -130,7 +130,7 @@ def research(ctx, limit: int | None = None) -> dict[str, dict]:
     rows = list(ctx.session.scalars(select(Topic).where(Topic.run_id == ctx.run.id).order_by(Topic.score.desc())))
     out: dict[str, dict] = {}
     for row in rows[:limit]:
-        if row.research and row.status not in ("clustered", "failed"):
+        if row.research and row.status != "clustered":  # 조사 끝난 주제(뒤 단계에서 실패했어도)는 다시 조사 안 함
             out[row.key] = row.research
             continue
         topic = {"title": row.title, "summary": row.summary, "angle_ideas": row.angle_ideas, "_videos": row.videos}

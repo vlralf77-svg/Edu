@@ -35,7 +35,7 @@ def test_failure_notifies_and_allows_retry(settings, monkeypatch):
     def boom(d, settings):
         raise RuntimeError("API down")
 
-    assert daily_job(settings, run_fn=boom) is None
+    assert daily_job(settings, run_fn=boom, sleep=lambda s: None) is None
     assert sent and "API down" in sent[0]
     from agent.context import today
     assert not done_marker(settings, today(settings)).exists()  # 실패 시 마커 없음 → 재시도 가능
@@ -52,3 +52,15 @@ def test_upload_body_private_and_synthetic():
     assert body["status"]["privacyStatus"] == "private"
     assert body["status"]["containsSyntheticMedia"] is True
     assert body["snippet"]["tags"] == ["AI", "뉴스"] and body["snippet"]["title"].endswith("#shorts")
+
+
+def test_daily_job_retries_transient_failure(settings):
+    calls, waits = [], []
+
+    def flaky(d, settings):
+        calls.append(d)
+        if len(calls) < 3:
+            raise RuntimeError("503 high demand")
+
+    assert daily_job(settings, run_fn=flaky, sleep=waits.append) is not None
+    assert len(calls) == 3 and waits == [20 * 60, 20 * 60]
