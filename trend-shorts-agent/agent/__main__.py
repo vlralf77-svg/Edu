@@ -35,7 +35,10 @@ def run_daily(run: Optional[str] = RunOpt, force: bool = ForceOpt):
     """1~6단계 전체 (수집→클러스터→조사→대본→팩트체크→후보 리스트). 제작은 승인 대기."""
     from .pipeline import run_daily as _run
     d = _run(run, force)
-    typer.echo(f"완료: data/runs/{d}/shortlist.md")
+    summary = get_settings().data_dir / "runs" / d / "summary.txt"
+    if summary.exists():
+        typer.echo("\n" + summary.read_text(encoding="utf-8"))
+    typer.echo(f"\n후보 목록: data/runs/{d}/shortlist.md")
 
 
 @app.command()

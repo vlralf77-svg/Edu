@@ -100,16 +100,55 @@ def step_shortlist(ctx: RunContext):
     return path, approved
 
 
+def funnel(ctx: RunContext) -> dict:
+    """단계별 결과 개수 (후보가 0개일 때 어디서 줄었는지 보기 위함)."""
+    def _len(name):
+        try:
+            return len(ctx.read_json(name))
+        except (FileNotFoundError, ValueError):
+            return None
+    topics = list(ctx.session.scalars(select(Topic).where(Topic.run_id == ctx.run.id)))
+    from collections import Counter
+    st = Counter(t.status for t in topics)
+    from .review.actions import candidates
+    return {"videos": _len("videos.json"), "topics": len(topics), "excluded": _len("topics_excluded.json"),
+            "researched_ok": sum(1 for t in topics if t.research),
+            "failed": st.get("failed", 0), "candidates": len(candidates(ctx.session, ctx.run_date)),
+            "status": dict(st)}
+
+
+def diagnose(f: dict, settings) -> str:
+    c = settings.collect
+    lines = [f"수집 영상 {f['videos']}개 → 주제 {f['topics']}개 (제외 {f['excluded'] or 0}개) → 조사 성공 {f['researched_ok']}개"
+             f" → 실패 {f['failed']}개 → 검토 후보 {f['candidates']}개"]
+    if f["candidates"]:
+        lines.append("다음 단계: ✅ 후보 검토에서 승인 → 🏠 홈의 [승인된 영상 제작] 버튼을 누르면 영상이 만들어집니다.")
+    elif not f["videos"]:
+        lines.append(f"원인: 조건(최근 {c.published_within_hours}시간·조회수 {c.min_view_count:,}회 이상)에 맞는 영상이 없습니다. "
+                     "설정에서 조회수 기준을 낮추거나 카테고리를 비워 보세요.")
+    elif not f["topics"]:
+        lines.append("원인: 영상은 모았지만 주제 묶기 결과가 0개입니다 (모두 제외됐거나 AI 응답 문제). "
+                     "다시 실행하면 주제 묶기를 자동으로 다시 시도합니다.")
+    elif f["failed"]:
+        lines.append("원인: 조사·대본 단계가 실패했습니다 (구글 서버 혼잡 등). 10~30분 뒤 다시 실행하면 실패한 주제만 이어서 합니다.")
+    return "\n".join(lines)
+
+
 def run_daily(run_date: str | None = None, force: bool = False, produce_auto: bool = True, settings=None) -> str:
     ctx = RunContext(run_date, settings)
     try:
-        step_collect(ctx, force)
-        step_cluster(ctx, force)
+        videos = step_collect(ctx, force)
+        topics = step_cluster(ctx, force)
+        if videos and not topics and not force:  # 지난번 주제 묶기가 0개 → 한 번 다시 (Gemini 무료라 비용 없음)
+            log.info("지난 실행의 주제가 0개였습니다 → 주제 묶기를 다시 시도합니다")
+            step_cluster(ctx, force=True)
         step_research(ctx, force)
         step_write(ctx, force)
         _, approved = step_shortlist(ctx)
         ctx.finish()
-        log.info("run %s 완료 — 비용 $%.2f, 쿼터 %d", ctx.run_date, ctx.run.cost_usd, ctx.run.quota_used)
+        summary = diagnose(funnel(ctx), ctx.settings)
+        (ctx.run_dir / "summary.txt").write_text(summary, encoding="utf-8")
+        log.info("run %s 완료 — 비용 $%.2f, 쿼터 %d\n%s", ctx.run_date, ctx.run.cost_usd, ctx.run.quota_used, summary)
     except BudgetExceeded as e:
         ctx.finish(str(e))
         notify(f"⛔ {ctx.run_date} 실행 중단: {e}", ctx.settings.notify.enabled)

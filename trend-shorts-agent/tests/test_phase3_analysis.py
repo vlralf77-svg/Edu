@@ -163,3 +163,45 @@ def test_rerun_retries_only_failed_topics(settings, yt_transport):
         assert set(st.values()) == {"checked"}
     new = llm.calls[len(before):]
     assert "cluster" not in new and new.count("research") == 1   # 이미 끝난 일은 다시 하지 않음
+
+
+def test_cluster_ids_matched_leniently():
+    videos = [{"video_id": "abcDEF12345", "title": "제목 하나", "view_count": 1, "views_per_hour": 1},
+              {"video_id": "xyzXYZ98765", "title": "제목 둘", "view_count": 1, "views_per_hour": 1},
+              {"video_id": "qqqWWW55555", "title": "제목 셋", "view_count": 1, "views_per_hour": 1}]
+    data = {"topics": [{"topic_id": "한글주제", "title": "t", "summary": "", "fitness": 3, "angle_ideas": [],
+                        "excluded": False, "related_video_ids": [" https://youtu.be/abcDEF12345 ", "제목 둘", "3"]}]}
+    kept, _ = parse_clusters(data, videos, 1)
+    assert kept[0]["related_video_ids"] == ["abcDEF12345", "xyzXYZ98765", "qqqWWW55555"]
+    assert kept[0]["topic_id"] == "topic-1"
+
+
+def test_run_daily_retries_empty_clustering_and_writes_summary(settings, yt_transport, monkeypatch):
+    from agent.pipeline import diagnose, funnel, run_daily
+
+    class EmptyFirst(FakeLLM):
+        n = 0
+
+        def complete_json(self, prompt, **kw):
+            if "같은 이슈" in prompt and EmptyFirst.n == 0:
+                EmptyFirst.n += 1
+                self.calls.append("cluster")
+                return {"topics": [{"topic_id": "x", "title": "x", "summary": "", "fitness": 3, "angle_ideas": [],
+                                    "excluded": False, "related_video_ids": ["없는id"]}]}, None
+            return super().complete_json(prompt, **kw)
+
+    llm = EmptyFirst()
+    with RunContext("2026-11-25", settings, llm=llm) as ctx:   # 첫 실행: 주제 0개로 끝남
+        _collect(ctx, yt_transport)
+        step_cluster(ctx)
+        step_research(ctx)
+        step_write(ctx)
+        step_shortlist(ctx)
+        f = funnel(ctx)
+        assert f["videos"] == 4 and f["topics"] == 0 and f["candidates"] == 0
+        assert "주제 묶기 결과가 0개" in diagnose(f, settings)
+    monkeypatch.setattr("agent.context.RunContext.llm", llm)
+    run_daily("2026-11-25", settings=settings, produce_auto=False)   # 다시 실행 → 자동으로 다시 묶기
+    assert llm.calls.count("cluster") == 2
+    summary = (settings.run_dir("2026-11-25") / "summary.txt").read_text(encoding="utf-8")
+    assert "검토 후보 2개" in summary and "승인된 영상 제작" in summary

@@ -54,11 +54,31 @@ def _slug(s: str, fallback: str) -> str:
 def parse_clusters(data: dict, videos: list[dict], min_videos: int) -> tuple[list[dict], list[dict]]:
     """LLM 출력 검증: 존재하지 않는 영상 id 제거, 중복 배정 제거, 적합도 범위 보정."""
     by_id = {v["video_id"]: v for v in videos}
+    by_title = {v.get("title", "").strip(): v["video_id"] for v in videos if v.get("title")}
     used: set[str] = set()
     kept, excluded = [], []
     seen_ids: set[str] = set()
+
+    def resolve(x) -> str | None:
+        """LLM 이 id 를 조금 다르게 돌려줘도 찾기: 공백·URL·제목·목록 번호."""
+        x = str(x).strip().strip('"\'')
+        if x in by_id:
+            return x
+        for vid in by_id:  # https://youtu.be/ID, watch?v=ID, "ID | 제목" 등
+            if len(vid) >= 6 and vid in x:
+                return vid
+        if x in by_title:
+            return by_title[x]
+        if x.isdigit() and 1 <= int(x) <= len(videos):  # 1부터 센 목록 번호
+            return videos[int(x) - 1]["video_id"]
+        return None
+
     for i, t in enumerate(data.get("topics", [])):
-        vids = [x for x in t.get("related_video_ids", []) if x in by_id and x not in used]
+        vids = []
+        for x in t.get("related_video_ids", []):
+            vid = resolve(x)
+            if vid and vid not in used and vid not in vids:
+                vids.append(vid)
         tid = _slug(t.get("topic_id", ""), f"topic-{i + 1}")
         while tid in seen_ids:
             tid += "-x"

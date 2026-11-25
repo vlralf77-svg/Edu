@@ -100,6 +100,14 @@ if page == PAGES[0]:
     b2.markdown("② **✅ 후보 검토** 메뉴에서 승인")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
+    summary = settings.data_dir / "runs" / d / "summary.txt"
+    if summary.exists():
+        st.info("**오늘 분석 결과**\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
+    if run:
+        with st.expander("결과가 이상하면: 오늘 분석을 처음부터 다시"):
+            st.write("수집부터 전부 다시 합니다 (YouTube 쿼터 약 300 사용, Gemini 무료).")
+            if st.button("처음부터 다시 분석"):
+                start_job("run-daily", ["run-daily", "--force"])
     with st.expander("처음이라면: 키 없이 샘플 영상 만들어 보기"):
         st.write("API 키 없이 샘플 대본으로 영상 제작 과정을 시험합니다 (테스트 음성·글자 화면).")
         if st.button("샘플 영상 만들기"):
