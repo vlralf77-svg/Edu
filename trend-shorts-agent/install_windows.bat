@@ -2,6 +2,10 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
+if not exist "agent\__main__.py" (
+  echo [오류] ZIP 압축을 먼저 풀고, 풀린 trend-shorts-agent 폴더 안에서 실행하세요.
+  pause & exit /b 1
+)
 echo ==================================================
 echo   트렌드 숏폼 에이전트 설치 (Windows)
 echo ==================================================

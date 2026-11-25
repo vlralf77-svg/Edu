@@ -157,12 +157,10 @@ def daily_job(if_due: bool = typer.Option(False, "--if-due", help="예정 시각
 
 
 @app.command("app")
-def control_panel(port: int = 8501):
-    """통합 제어판 (프로그램 화면) 실행 — 브라우저 창이 자동으로 열립니다"""
-    app_path = Path(__file__).parent / "ui" / "app.py"
-    typer.echo(f"제어판을 엽니다: http://localhost:{port}  (이 창을 닫으면 제어판이 종료됩니다)")
-    subprocess.run([sys.executable, "-m", "streamlit", "run", str(app_path), "--server.port", str(port),
-                    "--server.address", "localhost", "--browser.gatherUsageStats", "false"], cwd=PROJECT_ROOT)
+def control_panel(port: int = 8501, open_browser: bool = typer.Option(True, "--open/--no-open")):
+    """통합 제어판 (프로그램 화면) 실행 — 준비되면 브라우저 창을 자동으로 엽니다"""
+    from .ui.launcher import launch
+    raise typer.Exit(launch(port, open_browser))
 
 
 @app.command("schedule-install")

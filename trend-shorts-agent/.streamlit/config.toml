@@ -1,6 +1,7 @@
 [server]
 address = "localhost"   # 내 PC 에서만 접속 (외부 노출 안 함)
 port = 8501
+headless = true        # 처음 실행 시 이메일 질문으로 멈추지 않게 (브라우저는 실행기가 직접 엽니다)
 
 [browser]
 gatherUsageStats = false
