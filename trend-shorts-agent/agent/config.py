@@ -54,8 +54,9 @@ class LLMCfg(BaseModel):
 
 
 class ResearchCfg(BaseModel):
-    provider: Literal["llm", "claude", "tavily", "serper"] = "llm"  # llm: 선택한 LLM 의 내장 웹 검색
-    searches_per_topic: int = 4
+    provider: Literal["auto", "news", "llm", "claude", "tavily", "serper"] = "auto"
+    # auto: Gemini 면 news(구글 뉴스 RSS, 무료·키 불필요), Claude 면 llm(내장 웹 검색)
+    searches_per_topic: int = 3
     min_sources: int = 2
 
 

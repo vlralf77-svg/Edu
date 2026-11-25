@@ -48,7 +48,10 @@ def gem(settings, monkeypatch):
 
 
 def test_defaults_to_gemini_and_requires_key(settings, monkeypatch):
-    assert settings.llm.provider == "gemini" and settings.research.provider == "llm"
+    from agent.analysis.research import resolve_provider
+    from agent.config import load_settings
+    d = load_settings(use_local=False)
+    assert d.llm.provider == "gemini" and d.research.provider == "auto" and resolve_provider(d) == "news"
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(LLMError, match="aistudio"):
         make_llm(settings)
@@ -242,3 +245,68 @@ def test_new_key_resets_exhausted_memory(gem, settings, monkeypatch):
     srv2 = Server([(200, ok('{"ok": 1}'))], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
     assert gem(srv2).complete_json("q")[0] == {"ok": 1}
     assert "new-key" not in (settings.data_dir / "gemini_quota.json").read_text(encoding="utf-8")
+
+
+RSS = """<?xml version="1.0" encoding="UTF-8"?><rss><channel>
+<item><title>AI 폰 공개 - 연합뉴스</title><link>https://news.google.com/rss/articles/AAA</link>
+<pubDate>Tue, 24 Nov 2026 03:00:00 GMT</pubDate><description>&lt;a href="x"&gt;AI 폰&lt;/a&gt; 공개 내용</description>
+<source url="https://www.yna.co.kr">연합뉴스</source></item>
+<item><title>AI 폰 반응 - 한겨레</title><link>https://news.google.com/rss/articles/BBB</link>
+<pubDate>Tue, 24 Nov 2026 04:00:00 GMT</pubDate><description>반응</description>
+<source url="https://www.hani.co.kr">한겨레</source></item>
+</channel></rss>"""
+
+
+def test_news_rss_parse():
+    from agent.analysis.research import NewsRSSSearch
+
+    def handler(req):
+        assert req.url.host == "news.google.com" and "when:3d" in req.url.params["q"]
+        assert req.url.params["gl"] == "KR"
+        return httpx.Response(200, content=RSS.encode())
+    res = NewsRSSSearch(http=httpx.Client(transport=httpx.MockTransport(handler))).search("AI 폰")
+    assert [r["publisher"] for r in res] == ["연합뉴스", "한겨레"]
+    assert res[0]["url"] == "https://news.google.com/rss/articles/AAA" and res[0]["snippet"] == "AI 폰 공개 내용"
+
+
+class FakeRSS:
+    def __init__(self):
+        self.queries = []
+
+    def search(self, q):
+        self.queries.append(q)
+        return [{"url": "https://news.google.com/rss/articles/AAA", "title": "기사1", "snippet": "s", "date": "",
+                 "publisher": "연합뉴스"},
+                {"url": "https://news.google.com/rss/articles/BBB", "title": "기사2", "snippet": "s", "date": "",
+                 "publisher": "한겨레"}]
+
+
+SUMMARY = {"sources": [
+    {"url": "https://news.google.com/rss/articles/AAA", "title": "기사1", "publisher": "연합뉴스", "published_date": "",
+     "facts": ["A"]},
+    {"url": "https://news.google.com/rss/articles/BBB", "title": "기사2", "publisher": "한겨레", "published_date": "",
+     "facts": ["B"]},
+    {"url": "https://made.up/x", "title": "?", "publisher": "?", "published_date": "", "facts": ["C"]}],
+    "key_facts": ["A", "B"], "contradictions": [], "confidence": "high"}
+
+
+def test_research_with_news_rss(gem, settings):
+    settings.research.provider = "news"
+    srv = Server([(200, ok(json.dumps(SUMMARY, ensure_ascii=False)))])
+    rss = FakeRSS()
+    with RunContext("2026-11-25", settings, llm=gem(srv)) as ctx:
+        data = research_topic(ctx, {"title": "AI 폰", "summary": "", "angle_ideas": ["배터리"]}, searcher=rss)
+    assert rss.queries == ["AI 폰", "AI 폰 배터리"]
+    assert [s["publisher"] for s in data["sources"]] == ["연합뉴스", "한겨레"]   # 지어낸 URL 제거
+    assert data["confidence"] == "high"                                       # 언론사 2곳 → 신뢰도 유지
+    body = srv.requests[0][1]
+    assert "tools" not in body                                                # 구글 검색 한도 안 씀
+
+
+def test_gemini_search_quota_falls_back_to_news(gem, settings):
+    settings.research.provider = "llm"
+    srv = Server([DAY_429, DAY_429, (200, ok(json.dumps(SUMMARY, ensure_ascii=False)))],
+                 models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    with RunContext("2026-11-25", settings, llm=gem(srv)) as ctx:
+        data = research_topic(ctx, {"title": "AI 폰", "summary": "", "angle_ideas": []}, searcher=FakeRSS())
+    assert len(data["sources"]) == 2

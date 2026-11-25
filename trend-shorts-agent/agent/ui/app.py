@@ -210,6 +210,10 @@ elif page == PAGES[3]:
                                   format_func={25: "뉴스·정치", 24: "엔터테인먼트", 28: "과학기술", 17: "스포츠",
                                                10: "음악", 20: "게임", 22: "인물·블로그", 26: "노하우·스타일"}.get)
             excl = st.text_input("제외 키워드 (쉼표로 구분)", ", ".join(s.collect.exclude_keywords))
+            RP = {"auto": "자동 (Gemini면 구글 뉴스, Claude면 AI 검색)", "news": "구글 뉴스 RSS (무료·키 불필요)",
+                  "llm": "AI 내장 웹 검색 (Gemini 무료는 한도 매우 작음)", "tavily": "Tavily (키 필요)", "serper": "Serper (키 필요)"}
+            rprov = st.selectbox("웹 조사 방식", list(RP), index=list(RP).index(s.research.provider)
+                                 if s.research.provider in RP else 0, format_func=RP.get)
             notify_on = st.toggle("Slack/Telegram 알림 보내기", s.notify.enabled)
         if st.form_submit_button("설정 저장", type="primary"):
             save_local_settings({
@@ -219,6 +223,7 @@ elif page == PAGES[3]:
                 "production": {"tts_provider": tts, "voice_id": voice.strip(), "visual_sources": vis},
                 "collect": {"category_ids": cats, "exclude_keywords": [x.strip() for x in excl.split(",") if x.strip()]},
                 "notify": {"enabled": notify_on},
+                "research": {"provider": rprov},
             })
             st.success("저장했습니다. (실행 시각을 바꿨다면 ⏰ 자동 실행에서 다시 등록하세요)")
             st.rerun()

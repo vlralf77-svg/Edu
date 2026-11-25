@@ -212,22 +212,28 @@ class GeminiLLM:
         """모델별로 시도. 하루 한도가 끝난 모델은 즉시 건너뛰고(오늘 하루 기억), 모두 끝나면 바로 중단."""
         tried: list[str] = []
         last: _Busy | None = None
+        search = "tools" in body  # 구글 검색 한도는 일반 호출 한도와 별개로 기록
+        tag = "#search" if search else ""
         for model in self._candidates():
-            if self.book.blocked(model):
+            if self.book.blocked(model + tag) or self.book.blocked(model):
                 continue
+            if search and len(tried) >= 2:  # 검색은 빨리 포기하고 뉴스 RSS 로 넘어가게
+                break
             if model != self.model:
                 log.warning("Gemini 모델 전환: '%s' → '%s'", self.model, model)
                 self.model = model
             tried.append(model)
             try:
-                return self._post_model(body)
+                return self._post_model(body, retries=1 if search else None)
             except _Busy as e:
                 last = e
                 if e.status == 404:
                     self.book.mark(model, "missing")
                 elif e.kind == "day":
-                    self.book.mark(model, "day")
+                    self.book.mark(model + tag, "day")
                     log.warning("Gemini '%s' 오늘 무료 한도 소진 → 다른 모델 시도 (구글 메시지: %s)", model, e)
+        if search:
+            raise LLMError(f"Gemini 구글 검색 사용 불가 ({getattr(last, 'status', '')}: {last})")
         if last is None or (last.status == 429 and not any(not self.book.blocked(m) for m in self._candidates())):
             raise LLMError(
                 f"오늘 Gemini 무료 한도를 모두 사용했습니다. 구글 무료 한도는 {reset_time_kst()}(한국 시간)에 초기화됩니다. "
@@ -238,9 +244,9 @@ class GeminiLLM:
                 else "")
         raise LLMError(f"Gemini API 오류 {last.status}: {last}{hint} (시도한 모델: {', '.join(tried)})")
 
-    def _post_model(self, body: dict) -> dict:
+    def _post_model(self, body: dict, retries: int | None = None) -> dict:
         delay = 5.0
-        retries = self.cfg.gemini_retries
+        retries = self.cfg.gemini_retries if retries is None else retries
         for attempt in range(retries + 1):
             self._throttle()
             try:

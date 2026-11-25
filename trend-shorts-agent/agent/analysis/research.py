@@ -68,7 +68,9 @@ def finalize(data: dict, min_sources: int, allowed_urls: set[str] | None = None)
         seen.add(url)
         sources.append(src)
     data["sources"] = sources
-    distinct_hosts = {urlparse(s["url"]).netloc for s in sources}
+    # 구글 뉴스 링크는 모두 news.google.com 이라 언론사 이름으로 출처 개수를 센다
+    distinct_hosts = {(s.get("publisher") or urlparse(s["url"]).netloc) if "news.google.com" in s["url"]
+                      else urlparse(s["url"]).netloc for s in sources}
     if len(distinct_hosts) < min_sources or data.get("contradictions"):
         data["confidence"] = "low"
     data.setdefault("confidence", "medium")
@@ -100,25 +102,78 @@ class SerperSearch(_HTTPSearch):
                  "date": x.get("date", "")} for x in r.json().get("news", [])]
 
 
+class NewsRSSSearch(_HTTPSearch):
+    """구글 뉴스 RSS (무료, 키 불필요). 최근 며칠 한국어 기사 제목·언론사·요약."""
+
+    def __init__(self, days: int = 3, http: httpx.Client | None = None):
+        self.days = days
+        self.http = http or httpx.Client(timeout=20, follow_redirects=True,
+                                         headers={"User-Agent": "Mozilla/5.0 trend-shorts-agent"})
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10), reraise=True)
+    def search(self, query: str) -> list[dict]:
+        import html as _html
+        import re as _re
+        import xml.etree.ElementTree as ET
+        r = self.http.get("https://news.google.com/rss/search",
+                          params={"q": f"{query} when:{self.days}d", "hl": "ko", "gl": "KR", "ceid": "KR:ko"})
+        r.raise_for_status()
+        out = []
+        for item in ET.fromstring(r.content).iter("item"):
+            src = item.find("source")
+            desc = _html.unescape(_re.sub(r"<[^>]+>", " ", item.findtext("description", "")))
+            out.append({"url": item.findtext("link", ""), "title": item.findtext("title", ""),
+                        "snippet": " ".join(desc.split())[:300], "date": item.findtext("pubDate", ""),
+                        "publisher": src.text if src is not None else "",
+                        "publisher_url": src.get("url", "") if src is not None else ""})
+        return out[:8]
+
+
+def resolve_provider(settings) -> str:
+    p = settings.research.provider
+    if p == "auto":  # Gemini 무료 등급은 구글 검색 한도가 매우 작아 뉴스 RSS 사용
+        return "news" if settings.llm.provider == "gemini" else "llm"
+    return p
+
+
 def research_topic(ctx, topic: dict, searcher: _HTTPSearch | None = None) -> dict:
     s = ctx.settings
     titles = "\n".join(f"- {v.title}" for v in topic.get("_videos", [])) or "-"
-    if s.research.provider in ("llm", "claude"):  # 선택한 LLM 의 내장 웹 검색 (Claude web search / Gemini Google 검색)
+    provider = resolve_provider(s)
+    if provider in ("llm", "claude"):  # 선택한 LLM 의 내장 웹 검색 (Claude web search / Gemini Google 검색)
         prompt = load_prompt("research", topic=topic["title"], summary=topic["summary"],
                              searches=s.research.searches_per_topic, video_titles=titles)
         tool = ctx.llm.web_search_tool(max_uses=s.research.searches_per_topic + 1)
-        data, res = ctx.llm.complete_json(prompt, tools=[tool])
-        return finalize(data, s.research.min_sources, _searched_urls(res.content) or None)
+        try:
+            data, res = ctx.llm.complete_json(prompt, tools=[tool])
+            return finalize(data, s.research.min_sources, _searched_urls(res.content) or None)
+        except Exception as e:  # noqa: BLE001
+            from ..costs import BudgetExceeded
+            if isinstance(e, BudgetExceeded) or s.llm.provider != "gemini":
+                raise
+            log.warning("Gemini 구글 검색 실패(%s) → 구글 뉴스 RSS 로 조사", str(e)[:120])
+            provider = "news"
 
-    searcher = searcher or (TavilySearch() if s.research.provider == "tavily" else SerperSearch())
-    queries = [topic["title"], f"{topic['title']} 공식 발표", f"{topic['title']} 뉴스"]
-    queries += [f"{topic['title']} {a}" for a in topic.get("angle_ideas", [])]
+    if searcher is None:
+        searcher = {"tavily": TavilySearch, "serper": SerperSearch}.get(provider, NewsRSSSearch)()
+    queries = [topic["title"]] + [f"{topic['title']} {a}" for a in topic.get("angle_ideas", [])]
+    if provider in ("tavily", "serper"):
+        queries.insert(1, f"{topic['title']} 공식 발표")
     results: list[dict] = []
+    seen: set[str] = set()
     for q in queries[: s.research.searches_per_topic]:
-        results += searcher.search(q)
-        ctx.tracker.add(f"search_calls:{s.research.provider}", 1)
+        for r in searcher.search(q):
+            if r["url"] not in seen:
+                seen.add(r["url"])
+                results.append(r)
+        ctx.tracker.add(f"search_calls:{provider}", 1)
+    results = results[:15]
+    if not results:
+        return finalize({"sources": [], "key_facts": [], "contradictions": [], "confidence": "low"},
+                        s.research.min_sources, set())
     urls = {r["url"] for r in results}
-    lines = "\n".join(f"- [{r['date']}] {r['title']} ({r['url']}): {r['snippet']}" for r in results)
+    lines = "\n".join(f"- [{r['date']}] {r.get('publisher', '')} | {r['title']} ({r['url']}): {r['snippet']}"
+                      for r in results)
     prompt = load_prompt("research_summarize", topic=topic["title"], summary=topic["summary"], results=lines)
     data, _ = ctx.llm.complete_json(prompt, schema=RESEARCH_SCHEMA)
     return finalize(data, s.research.min_sources, urls)

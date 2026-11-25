@@ -35,8 +35,8 @@ llm:
   web_search_price_per_1k: 10.0
 
 research:
-  provider: llm               # llm(선택한 LLM 의 내장 웹 검색: Gemini=Google 검색, Claude=web search) | tavily | serper
-  searches_per_topic: 4
+  provider: auto              # auto(Gemini→news, Claude→llm) | news(구글 뉴스 RSS, 무료·키 불필요) | llm(AI 내장 웹 검색) | tavily | serper
+  searches_per_topic: 3
   min_sources: 2
 
 topics:
