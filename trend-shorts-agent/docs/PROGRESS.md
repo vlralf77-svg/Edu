@@ -1,6 +1,6 @@
 # 개발 진행 기록
 
-> 기준일: 2026-11-25 · 테스트: `pytest` **95개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
+> 기준일: 2026-11-25 · 테스트: `pytest` **106개 통과** (외부 API 전부 mock, FFmpeg/fluidsynth 실제 실행 포함)
 > 빠른 테스트만: `pytest -m "not slow"` (1~2초) · 전체: `pytest` (약 80초)
 
 ## 공통 실행 준비
@@ -118,3 +118,11 @@ cp .env.example .env                                 # 키 입력
 - 자동 실행: Windows 작업 스케줄러(`schtasks`) + 시작프로그램 보충 실행 / Mac·Linux crontab + `@reboot` 보충, `daily-job --if-due`
 - ⚠️ Linux 에서만 실제 실행 확인. **Windows·Mac 설치 스크립트와 작업 스케줄러 등록은 실제 PC 에서 아직 시험하지 않음**
   (이 개발 환경에 Windows/Mac 이 없음). 첫 설치 때 문제가 생기면 콘솔 메시지를 알려 주세요.
+
+## 무료 LLM: Google Gemini ✅ — 2026-11-25 추가 (기본값)
+- `agent/llm_gemini.py`: Claude 래퍼와 같은 인터페이스. `settings.llm.provider: gemini`(기본) | `claude`, 키 `GEMINI_API_KEY`
+- JSON 출력(responseSchema, 거부 시 스키마 없이 재시도), 웹 조사는 Google 검색 그라운딩 → 출처 리다이렉트 주소를 실제 기사 주소로 풀어서 검증
+- 무료 등급 대비: 호출 간 최소 6초 간격, 429/5xx 재시도(retryDelay 준수), 하루 한도 초과 시 안내 메시지
+- 설정한 모델 이름이 없으면(404) 사용 가능한 안정판 flash 모델로 자동 전환
+- ⚠️ 이 개발 환경에서는 Google 서버·문서에 접속할 수 없어 **실제 Gemini 호출은 미검증** (REST 형식대로 구현 + mock 테스트).
+  기본 모델 `gemini-2.5-flash`, 무료 등급 호출 한도·데이터 이용 조건은 AI Studio 에서 확인 필요

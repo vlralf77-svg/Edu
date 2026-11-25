@@ -36,6 +36,10 @@ class CollectCfg(BaseModel):
 
 
 class LLMCfg(BaseModel):
+    provider: Literal["gemini", "claude"] = "gemini"
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_min_interval_sec: float = 6.0
+    gemini_price_per_mtok: dict[str, float] = Field(default_factory=lambda: {"input": 0.0, "output": 0.0})
     model: str = "claude-opus-5-5"
     effort: str = "medium"
     max_tokens: int = 16000
@@ -46,7 +50,7 @@ class LLMCfg(BaseModel):
 
 
 class ResearchCfg(BaseModel):
-    provider: Literal["claude", "tavily", "serper"] = "claude"
+    provider: Literal["llm", "claude", "tavily", "serper"] = "llm"  # llm: 선택한 LLM 의 내장 웹 검색
     searches_per_topic: int = 4
     min_sources: int = 2
 

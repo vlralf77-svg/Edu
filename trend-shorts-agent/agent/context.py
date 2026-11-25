@@ -41,8 +41,8 @@ class RunContext:
     def llm(self):
         if self._llm is not None:
             return self._llm
-        from .llm import LLM
-        return LLM(self.settings, self.tracker)
+        from .llm import make_llm
+        return make_llm(self.settings, self.tracker)
 
     # ---- 산출물 파일 ----
     def write_json(self, name: str, data: Any) -> Path:

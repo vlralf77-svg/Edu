@@ -31,7 +31,9 @@
 
 1. **🩺 점검** — 빠진 항목 확인
 2. **⚙️ 설정 ▸ API 키** — 발급받은 키 입력 후 [키 저장]
-   - Claude(유료), YouTube Data API(무료), Pexels(무료), Pixabay(선택, 무료), ElevenLabs(음성)
+   - **Gemini(무료)** — https://aistudio.google.com/apikey 에서 구글 계정으로 로그인 → "API 키 만들기" (카드 등록 불필요)
+   - YouTube Data API(무료), Pexels(무료), Pixabay(선택, 무료), ElevenLabs(음성)
+   - Claude 키는 설정에서 AI 를 Claude(유료)로 바꿀 때만 필요
 3. **⚙️ 설정 ▸ 동작 설정** — 하루 주제 수, 비용 상한, 모델, 실행 시각, ElevenLabs 보이스 ID → [설정 저장]
 4. **🩺 점검 ▸ YouTube 수집만 시험해 보기** — 비용 없이 키가 맞는지 확인
 5. **🏠 홈 ▸ 처음이라면: 샘플 영상 만들어 보기** — 키 없이 제작 과정 시험
@@ -59,5 +61,6 @@
 |---|---|
 | 점검에서 FFmpeg ❌ | 설치 직후라면 PC 를 재시작하거나 새 창으로 다시 실행. 그래도 안 되면 PowerShell 에서 `winget install Gyan.FFmpeg` |
 | 한글이 □□ 로 나옴 | `assets/fonts` 폴더에 Pretendard 또는 Noto Sans KR `.ttf/.otf` 파일 넣기 |
+| "하루 사용량을 다 썼을 수 있습니다" (Gemini 429) | 무료 등급 하루 한도 초과. 다음 날 자동으로 풀림 — 하루 주제 수를 줄이세요 |
 | 비용 상한 초과로 중단 | 설정에서 상한을 올리거나 하루 주제 수를 줄이기 |
 | 작업이 실패함 | 홈/점검 화면의 **작업 로그** 또는 `data/runs/날짜/run.log` 확인 |

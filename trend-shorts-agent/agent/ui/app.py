@@ -88,7 +88,8 @@ if page == PAGES[0]:
     pending = session.scalars(select(Script).where(Script.approval_status == "pending_review")).all()
     approved = session.scalars(select(Script).where(Script.approval_status == "approved")).all()
     c3.metric("검토 대기 / 승인", f"{len(pending)} / {len(approved)}")
-    c4.metric("오늘 사용 비용", f"${run.cost_usd:.2f}" if run else "$0.00",
+    c4.metric("오늘 사용 비용" + (" (Gemini 무료)" if settings.llm.provider == "gemini" else ""),
+              f"${run.cost_usd:.2f}" if run else "$0.00",
               help=f"하루 상한 ${settings.budget.max_daily_cost_usd}")
 
     st.subheader("할 일")
@@ -147,7 +148,8 @@ elif page == PAGES[3]:
     st.subheader("API 키")
     st.caption(f"키는 이 PC 의 `{ENV_FILE}` 파일에만 저장됩니다. 칸을 비워 두면 기존 값이 유지됩니다.")
     KEYS = [
-        ("ANTHROPIC_API_KEY", "Claude API 키 (필수, 유료)", "https://console.anthropic.com"),
+        ("GEMINI_API_KEY", "Gemini API 키 (무료 — LLM 을 Gemini 로 쓸 때)", "https://aistudio.google.com/apikey"),
+        ("ANTHROPIC_API_KEY", "Claude API 키 (유료 — LLM 을 Claude 로 쓸 때)", "https://console.anthropic.com"),
         ("YOUTUBE_API_KEY", "YouTube Data API 키 (필수, 무료)", "https://console.cloud.google.com/apis/library/youtube.googleapis.com"),
         ("PEXELS_API_KEY", "Pexels 키 (필수, 무료 — 실사 영상)", "https://www.pexels.com/api/"),
         ("PIXABAY_API_KEY", "Pixabay 키 (선택, 무료)", "https://pixabay.com/api/docs/"),
@@ -178,7 +180,12 @@ elif page == PAGES[3]:
         with c1:
             topics = st.slider("하루 주제 수 (많을수록 비용↑)", 1, 15, s.topics.max_topics_per_day)
             cost = st.number_input("하루 비용 상한 (달러, 넘으면 자동 중단)", 0.1, 50.0, float(s.budget.max_daily_cost_usd), 0.1)
-            model = st.selectbox("Claude 모델", list(MODELS), index=list(MODELS).index(s.llm.model)
+            provider = st.radio("분석·대본 AI", ["gemini", "claude"], index=["gemini", "claude"].index(s.llm.provider),
+                                format_func={"gemini": "Google Gemini (무료 등급)", "claude": "Anthropic Claude (유료)"}.get,
+                                horizontal=True)
+            gmodel = st.text_input("Gemini 모델 이름", s.llm.gemini_model,
+                                   help="없어진 이름이면 사용 가능한 flash 모델로 자동 전환됩니다")
+            model = st.selectbox("Claude 모델 (Claude 선택 시)", list(MODELS), index=list(MODELS).index(s.llm.model)
                                  if s.llm.model in MODELS else 0, format_func=MODELS.get)
             run_at = st.time_input("매일 실행 시각", value=dtime(*map(int, s.schedule.run_at.split(":"))))
             approval = st.toggle("사람이 승인한 것만 제작 (권장)", s.review.require_approval)
@@ -199,7 +206,7 @@ elif page == PAGES[3]:
         if st.form_submit_button("설정 저장", type="primary"):
             save_local_settings({
                 "topics": {"max_topics_per_day": topics}, "budget": {"max_daily_cost_usd": float(cost)},
-                "llm": {"model": model}, "schedule": {"run_at": run_at.strftime("%H:%M")},
+                "llm": {"provider": provider, "gemini_model": gmodel.strip(), "model": model}, "schedule": {"run_at": run_at.strftime("%H:%M")},
                 "review": {"require_approval": approval, "auto_produce_top_n": int(auto_n)},
                 "production": {"tts_provider": tts, "voice_id": voice.strip(), "visual_sources": vis},
                 "collect": {"category_ids": cats, "exclude_keywords": [x.strip() for x in excl.split(",") if x.strip()]},

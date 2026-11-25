@@ -10,7 +10,7 @@
 
 1. `install_windows.bat` (Mac: `install_mac.command`, Linux: `install_linux.sh`) 더블클릭
 2. 바탕화면 **Trend Shorts Agent** 아이콘 → 브라우저에 제어판이 열림
-3. ⚙️ 설정에서 API 키 입력 → 🏠 홈에서 분석 시작 → ✅ 검토 → 영상 제작 → 🎬 만든 영상에서 저장
+3. ⚙️ 설정에서 API 키 입력 (분석·대본 AI 는 기본이 **Google Gemini 무료 등급** — Claude 유료로 바꿀 수 있음) → 🏠 홈에서 분석 시작 → ✅ 검토 → 영상 제작 → 🎬 만든 영상에서 저장
 
 자세한 설명: [`docs/INSTALL.md`](docs/INSTALL.md)
 

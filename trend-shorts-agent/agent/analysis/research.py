@@ -103,7 +103,7 @@ class SerperSearch(_HTTPSearch):
 def research_topic(ctx, topic: dict, searcher: _HTTPSearch | None = None) -> dict:
     s = ctx.settings
     titles = "\n".join(f"- {v.title}" for v in topic.get("_videos", [])) or "-"
-    if s.research.provider == "claude":
+    if s.research.provider in ("llm", "claude"):  # 선택한 LLM 의 내장 웹 검색 (Claude web search / Gemini Google 검색)
         prompt = load_prompt("research", topic=topic["title"], summary=topic["summary"],
                              searches=s.research.searches_per_topic, video_titles=titles)
         tool = ctx.llm.web_search_tool(max_uses=s.research.searches_per_topic + 1)

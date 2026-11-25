@@ -56,7 +56,10 @@ def run_checks(settings: Settings) -> list[Check]:
         v = os.environ.get(name, "")
         checks.append(Check(label, bool(v), "설정됨" if v else "없음", f"설정 탭에 입력 ({url})", required))
 
-    key("ANTHROPIC_API_KEY", "Claude API 키 (분석·대본)", "console.anthropic.com")
+    if settings.llm.provider == "gemini":
+        key("GEMINI_API_KEY", "Gemini API 키 (분석·대본, 무료)", "aistudio.google.com/apikey")
+    else:
+        key("ANTHROPIC_API_KEY", "Claude API 키 (분석·대본, 유료)", "console.anthropic.com")
     key("YOUTUBE_API_KEY", "YouTube Data API 키 (트렌드 수집)", "console.cloud.google.com")
     key("PEXELS_API_KEY", "Pexels 키 (실사 영상 클립)", "pexels.com/api")
     key("PIXABAY_API_KEY", "Pixabay 키 (추가 영상 클립)", "pixabay.com/api/docs", required=False)

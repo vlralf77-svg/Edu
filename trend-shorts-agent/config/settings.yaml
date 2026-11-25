@@ -17,6 +17,11 @@ collect:
   quota_stop_ratio: 0.8
 
 llm:
+  provider: gemini            # gemini: Google Gemini (무료 등급 가능, GEMINI_API_KEY) | claude: Anthropic Claude (유료)
+  gemini_model: gemini-2.5-flash   # 없어진 이름이면 사용 가능한 flash 모델로 자동 전환
+  gemini_min_interval_sec: 6  # 무료 등급 분당 호출 제한 대비 호출 간격(초)
+  gemini_price_per_mtok: {input: 0.0, output: 0.0}   # 무료 등급은 0. 유료 등급으로 바꾸면 요금 입력
+  # ---- 아래는 provider: claude 일 때
   model: claude-opus-5-5
   effort: medium              # low | medium | high | xhigh | max
   max_tokens: 16000
@@ -26,7 +31,7 @@ llm:
   web_search_price_per_1k: 10.0
 
 research:
-  provider: claude            # claude(web search 툴) | tavily | serper
+  provider: llm               # llm(선택한 LLM 의 내장 웹 검색: Gemini=Google 검색, Claude=web search) | tavily | serper
   searches_per_topic: 4
   min_sources: 2
 

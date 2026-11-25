@@ -170,3 +170,11 @@ class LLM:
     @staticmethod
     def web_search_tool(max_uses: int = 5) -> dict:
         return {"type": WEB_SEARCH_TOOL, "name": "web_search", "max_uses": max_uses}
+
+
+def make_llm(settings: Settings, tracker: CostTracker | None = None):
+    """settings.llm.provider 에 맞는 LLM 클라이언트 (gemini: 무료 등급 가능 / claude: 유료)."""
+    if settings.llm.provider == "gemini":
+        from .llm_gemini import GeminiLLM
+        return GeminiLLM(settings, tracker)
+    return LLM(settings, tracker)
