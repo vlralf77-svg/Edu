@@ -74,9 +74,90 @@ def pick_flash_model(names: list[str]) -> str | None:
 class _Busy(LLMError):
     """혼잡(5xx)·한도(429)·모델 없음 — 다른 모델로 넘어갈 수 있는 실패."""
 
-    def __init__(self, status: int, msg: str):
+    def __init__(self, status: int, msg: str, kind: str = ""):
         super().__init__(msg)
         self.status = status
+        self.kind = kind
+
+
+def classify_429(r: httpx.Response) -> tuple[str, str, float | None]:
+    """429 응답 분류 → ("day" 하루 한도 | "minute" 분당 한도 | "unknown", 구글 메시지, 재시도 대기초)."""
+    try:
+        err = r.json().get("error", {})
+    except ValueError:
+        return "unknown", r.text[:300], None
+    msg = err.get("message", "")
+    kind, delay = "unknown", None
+    for d in err.get("details", []):
+        if "retryDelay" in d:
+            try:
+                delay = float(str(d["retryDelay"]).rstrip("s")) + 1
+            except ValueError:
+                pass
+        for v in d.get("violations", []):
+            qid = (v.get("quotaId", "") + " " + v.get("quotaMetric", "")).lower()
+            if "perday" in qid or "per_day" in qid:
+                kind = "day"
+            elif kind != "day" and ("perminute" in qid or "per_minute" in qid):
+                kind = "minute"
+    low = msg.lower()
+    if kind == "unknown":
+        if "per day" in low or "perday" in low:
+            kind = "day"
+        elif "per minute" in low or "perminute" in low:
+            kind = "minute"
+    if re.search(r"limit:\s*0\b", low):  # 이 모델은 무료 한도 자체가 0
+        kind = "day"
+    return kind, msg, delay
+
+
+def quota_day() -> str:
+    """구글 무료 한도는 미국 태평양 시간 자정에 초기화."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
+
+
+def reset_time_kst() -> str:
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    la = ZoneInfo("America/Los_Angeles")
+    now = datetime.now(la)
+    nxt = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return nxt.astimezone(ZoneInfo("Asia/Seoul")).strftime("%m월 %d일 %H시")
+
+
+class QuotaBook:
+    """오늘(태평양 시간 기준) 하루 한도가 끝난 모델·없는 모델을 기억해서 다시 시도하느라 시간 낭비하지 않게."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def _load(self) -> dict:
+        import json
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        if data.get("day") != quota_day():
+            data = {"day": quota_day(), "exhausted": [], "missing": data.get("missing", [])}
+        return data
+
+    def blocked(self, model: str) -> bool:
+        d = self._load()
+        return model in d["exhausted"] or model in d["missing"]
+
+    def mark(self, model: str, kind: str) -> None:
+        import json
+        d = self._load()
+        key = "missing" if kind == "missing" else "exhausted"
+        if model not in d[key]:
+            d[key].append(model)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+        except OSError:
+            pass
 
 
 class GeminiLLM:
@@ -92,7 +173,8 @@ class GeminiLLM:
         self.sleep = sleep
         self._last_call = 0.0
         self._lock = threading.Lock()
-        self._model_checked = False
+        self._models: list[str] | None = None
+        self.book = QuotaBook(settings.data_dir / "gemini_quota.json")
 
     # ------------------------------------------------------------------ HTTP
     def _throttle(self) -> None:
@@ -102,25 +184,55 @@ class GeminiLLM:
                 self.sleep(wait)
             self._last_call = time.monotonic()
 
+    def _candidates(self) -> list[str]:
+        """시도 순서: 지금 모델 → 설정의 대체 모델 → 계정에서 쓸 수 있는 flash 계열(최신 버전 우선)."""
+        order = [self.model, self.cfg.gemini_model, *self.cfg.gemini_fallback_models]
+        if self._models is None:
+            try:
+                self._models = [n.removeprefix("models/") for n in self.list_models()]
+            except httpx.HTTPError:
+                self._models = []
+        flash = [n for n in self._models if "flash" in n
+                 and not re.search(r"(image|tts|live|audio|embed|exp|preview|thinking)", n)]
+
+        def ver(n):
+            return tuple(int(x) for x in re.findall(r"(\d+)", n.split("flash")[0])) or (0,)
+        order += sorted(flash, key=lambda n: (ver(n), "lite" not in n), reverse=True)
+        out = []
+        for m in order:
+            if m and m not in out and not (self._models and m not in self._models and m != self.model):
+                out.append(m)
+        return out
+
     def _post(self, body: dict) -> dict:
-        """현재 모델로 시도 → 혼잡(503)·한도(429)가 계속되면 다른 무료 모델로 자동 전환."""
-        tried: set[str] = set()
-        last: Exception | None = None
-        while True:
+        """모델별로 시도. 하루 한도가 끝난 모델은 즉시 건너뛰고(오늘 하루 기억), 모두 끝나면 바로 중단."""
+        tried: list[str] = []
+        last: _Busy | None = None
+        for model in self._candidates():
+            if self.book.blocked(model):
+                continue
+            if model != self.model:
+                log.warning("Gemini 모델 전환: '%s' → '%s'", self.model, model)
+                self.model = model
+            tried.append(model)
             try:
                 return self._post_model(body)
             except _Busy as e:
                 last = e
-                tried.add(self.model)
-                nxt = self._next_fallback(tried)
-                if not nxt:
-                    break
-                log.warning("Gemini '%s' 사용 불가(%s) → 무료 모델 '%s' 로 전환", self.model, e.status, nxt)
-                self.model = nxt
-        hint = (" — 무료 등급 하루 사용량을 다 썼을 수 있습니다. 내일 다시 실행하거나 하루 주제 수를 줄이세요."
-                if getattr(last, "status", 0) == 429 else
-                " — 구글 무료 서버가 혼잡합니다. 10~30분 뒤 다시 실행하면 완료된 단계는 건너뛰고 이어서 진행합니다.")
-        raise LLMError(f"Gemini API 오류 {getattr(last, 'status', '')}: {last}{hint} (시도한 모델: {', '.join(sorted(tried))})")
+                if e.status == 404:
+                    self.book.mark(model, "missing")
+                elif e.kind == "day":
+                    self.book.mark(model, "day")
+                    log.warning("Gemini '%s' 오늘 무료 한도 소진 → 다른 모델 시도 (구글 메시지: %s)", model, e)
+        if last is None or (last.status == 429 and not any(not self.book.blocked(m) for m in self._candidates())):
+            raise LLMError(
+                f"오늘 Gemini 무료 한도를 모두 사용했습니다. 구글 무료 한도는 {reset_time_kst()}(한국 시간)에 초기화됩니다. "
+                "그 이후 다시 실행하면 끝난 단계는 건너뛰고 이어서 진행합니다. "
+                "자주 걸리면 설정에서 하루 주제 수를 2~3개로 줄이세요."
+                + (f" (구글 메시지: {last})" if last else ""))
+        hint = (" — 구글 무료 서버가 혼잡합니다. 10~30분 뒤 다시 실행하면 이어서 진행합니다." if last.status >= 500
+                else "")
+        raise LLMError(f"Gemini API 오류 {last.status}: {last}{hint} (시도한 모델: {', '.join(tried)})")
 
     def _post_model(self, body: dict) -> dict:
         delay = 5.0
@@ -137,66 +249,44 @@ class GeminiLLM:
                 delay = min(delay * 2, 60)
                 continue
             if r.status_code == 404:
-                if not self._model_checked and self.model == self.cfg.gemini_model:
-                    self._switch_model()
-                    continue
                 raise _Busy(404, f"모델 '{self.model}' 없음")
-            msg = ""
-            if r.status_code >= 400:
-                try:
-                    msg = r.json().get("error", {}).get("message", "")
-                except ValueError:
-                    msg = r.text[:300]
-            if r.status_code in (429, 500, 502, 503, 504):
-                daily = r.status_code == 429 and "per day" in msg.lower()
-                if attempt < retries and not daily:
-                    wait = self._retry_delay(r) or delay
-                    log.warning("Gemini %d (혼잡/분당 한도) → %.0f초 후 재시도 [%d/%d]", r.status_code, wait,
-                                attempt + 1, retries)
+            if r.status_code == 429:
+                kind, msg, wait = classify_429(r)
+                if kind == "day":
+                    raise _Busy(429, msg or "하루 한도 초과", kind="day")
+                if attempt < retries:
+                    wait = wait or max(delay, 15)
+                    log.warning("Gemini 429 분당 한도 → %.0f초 후 재시도 [%d/%d] (구글: %s)", wait, attempt + 1, retries,
+                                msg[:150])
                     self.sleep(wait)
                     delay = min(delay * 2, 60)
                     continue
-                raise _Busy(r.status_code, msg or r.reason_phrase)
+                raise _Busy(429, msg, kind=kind)
+            if r.status_code in (500, 502, 503, 504):
+                if attempt < retries:
+                    log.warning("Gemini %d (서버 혼잡) → %.0f초 후 재시도 [%d/%d]", r.status_code, delay, attempt + 1,
+                                retries)
+                    self.sleep(delay)
+                    delay = min(delay * 2, 60)
+                    continue
+                raise _Busy(r.status_code, self._msg(r))
             if r.status_code >= 400:
-                raise LLMError(f"Gemini API 오류 {r.status_code}: {msg}")
+                raise LLMError(f"Gemini API 오류 {r.status_code}: {self._msg(r)}")
             return r.json()
         raise _Busy(0, "재시도 횟수 초과")
 
-    def _next_fallback(self, tried: set[str]) -> str | None:
-        for m in self.cfg.gemini_fallback_models:
-            if m not in tried:
-                return m
-        try:  # 설정 목록이 다 막히면 계정에서 쓸 수 있는 다른 flash 계열 자동 선택
-            names = [n.removeprefix("models/") for n in self.list_models()]
-        except httpx.HTTPError:
-            return None
-        flash = [n for n in names if "flash" in n and n not in tried
-                 and not re.search(r"(image|tts|live|audio|embed|exp|preview)", n)]
-        return pick_flash_model(flash) or (flash[0] if flash else None)
-
     @staticmethod
-    def _retry_delay(r: httpx.Response) -> float | None:
+    def _msg(r: httpx.Response) -> str:
         try:
-            for d in r.json().get("error", {}).get("details", []):
-                if "retryDelay" in d:
-                    return float(str(d["retryDelay"]).rstrip("s")) + 1
-        except Exception:  # noqa: BLE001
-            return None
-        return None
+            return r.json().get("error", {}).get("message", "") or r.reason_phrase
+        except ValueError:
+            return r.text[:300]
 
     def list_models(self) -> list[str]:
         r = self.http.get(f"{API}/models", headers={"x-goog-api-key": self.key}, params={"pageSize": 200})
         r.raise_for_status()
         return [m["name"] for m in r.json().get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])]
-
-    def _switch_model(self) -> None:
-        self._model_checked = True
-        new = pick_flash_model(self.list_models())
-        if not new:
-            raise LLMError(f"Gemini 모델 '{self.model}' 을 찾을 수 없고 대체할 flash 모델도 없습니다. 설정에서 모델 이름을 확인하세요.")
-        log.warning("Gemini 모델 '%s' 없음 → '%s' 로 자동 전환 (설정에서 바꿀 수 있음)", self.model, new)
-        self.model = new
 
     # ------------------------------------------------------------------ 검색 출처
     def _resolve(self, url: str) -> str:

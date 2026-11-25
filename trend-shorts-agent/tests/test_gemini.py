@@ -70,7 +70,7 @@ def test_json_request_and_usage(gem):
                                                 system="시스템")
     assert data == {"x": 1}
     url, body, key = srv.requests[0]
-    assert url.endswith("/models/gemini-2.5-flash:generateContent") and key == "g-key"
+    assert url.endswith("/models/gemini-flash-latest:generateContent") and key == "g-key"
     assert body["generationConfig"]["responseMimeType"] == "application/json"
     assert body["generationConfig"]["responseSchema"]["type"] == "OBJECT"
     assert body["systemInstruction"]["parts"][0]["text"] == "시스템"
@@ -128,12 +128,55 @@ def test_rate_limit_retry_then_success(gem):
     assert data == {"z": 3} and 8.0 in waits
 
 
-def test_daily_quota_exhausted_message(gem, settings):
-    settings.llm.gemini_retries = 1
-    settings.llm.gemini_fallback_models = []
-    srv = Server([(429, {"error": {"message": "quota"}})] * 3)
-    with pytest.raises(LLMError, match="하루 사용량"):
-        gem(srv).complete("q")
+DAY_429 = (429, {"error": {"message": "You exceeded your current quota. Quota exceeded for metric: "
+                                      "generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20",
+                           "details": [{"@type": "type.googleapis.com/google.rpc.QuotaFailure", "violations": [
+                               {"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier", "quotaValue": "20"}]},
+                               {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "39s"}]}})
+MIN_429 = (429, {"error": {"message": "quota", "details": [{"violations": [
+    {"quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}]}, {"retryDelay": "12s"}]}})
+
+
+def test_classify_429():
+    from agent.llm_gemini import classify_429
+    assert classify_429(httpx.Response(429, json=DAY_429[1]))[0] == "day"
+    assert classify_429(httpx.Response(429, json=MIN_429[1]))[:1] == ("minute",)
+    assert classify_429(httpx.Response(429, json=MIN_429[1]))[2] == 13.0
+    assert classify_429(httpx.Response(429, json={"error": {"message": "x limit: 0, model: m"}}))[0] == "day"
+
+
+def test_daily_quota_exhausted_everywhere_stops_fast(gem, settings):
+    srv = Server([DAY_429, DAY_429], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    waits = []
+    llm = gem(srv)
+    llm.sleep = waits.append
+    with pytest.raises(LLMError, match="무료 한도를 모두 사용") as e:
+        llm.complete("q")
+    assert "초기화" in str(e.value) and len(srv.requests) == 2      # 모델당 1번씩만, 재시도 대기 없음
+    assert all(w < 14 for w in waits)                                # 호출 간격 외에 긴 대기 없음
+    # 같은 날 새로 실행해도 구글에 다시 묻지 않고 바로 안내
+    srv2 = Server([], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    with pytest.raises(LLMError, match="무료 한도를 모두 사용"):
+        gem(srv2).complete("q")
+    assert srv2.requests == []
+
+
+def test_exhausted_model_remembered_next_run(gem, settings):
+    srv = Server([DAY_429, (200, ok('{"a": 1}'))], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    assert gem(srv).complete_json("q")[0] == {"a": 1}
+    srv2 = Server([(200, ok('{"b": 2}'))], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    llm2 = gem(srv2)
+    assert llm2.complete_json("q")[0] == {"b": 2}
+    assert len(srv2.requests) == 1 and "flash-lite-latest" in srv2.requests[0][0]
+
+
+def test_per_minute_limit_waits_and_retries_same_model(gem):
+    srv = Server([MIN_429, (200, ok('{"m": 1}'))])
+    waits = []
+    llm = gem(srv)
+    llm.sleep = waits.append
+    assert llm.complete_json("q")[0] == {"m": 1} and 13.0 in waits
+    assert srv.requests[0][0] == srv.requests[1][0]
 
 
 def test_overloaded_switches_to_fallback_model(gem, settings):
@@ -142,19 +185,19 @@ def test_overloaded_switches_to_fallback_model(gem, settings):
     srv = Server([busy, busy, busy, (200, ok('{"ok": true}'))])
     llm = gem(srv)
     data, _ = llm.complete_json("q")
-    assert data == {"ok": True} and llm.model == "gemini-2.5-flash-lite"
+    assert data == {"ok": True} and llm.model == "gemini-flash-lite-latest"
     assert [u.split("/models/")[1].split(":")[0] for u, _, _ in srv.requests] == \
-        ["gemini-2.5-flash"] * 3 + ["gemini-2.5-flash-lite"]
+        ["gemini-flash-latest"] * 3 + ["gemini-flash-lite-latest"]
     # 이후 호출은 전환된 모델 유지
     srv.responses.append((200, ok('{"x": 1}')))
     llm.complete_json("q2")
-    assert "gemini-2.5-flash-lite" in srv.requests[-1][0]
+    assert "gemini-flash-lite-latest" in srv.requests[-1][0]
 
 
 def test_daily_quota_on_one_model_uses_another(gem, settings):
     srv = Server([(429, {"error": {"message": "Quota exceeded for metric: requests per day"}}), (200, ok('{"a": 1}'))])
     llm = gem(srv)
-    assert llm.complete_json("q")[0] == {"a": 1} and llm.model == "gemini-2.5-flash-lite"
+    assert llm.complete_json("q")[0] == {"a": 1} and llm.model == "gemini-flash-lite-latest"
     assert len(srv.requests) == 2                      # 하루 한도는 같은 모델 재시도 없이 바로 전환
 
 

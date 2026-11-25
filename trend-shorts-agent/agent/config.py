@@ -39,10 +39,10 @@ class CollectCfg(BaseModel):
 
 class LLMCfg(BaseModel):
     provider: Literal["gemini", "claude"] = "gemini"
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_min_interval_sec: float = 6.0
+    gemini_model: str = "gemini-flash-latest"   # 구글이 관리하는 '최신 flash' 별칭
+    gemini_min_interval_sec: float = 13.0
     gemini_retries: int = 4                     # 같은 모델 재시도 횟수 (5→10→20→40초…최대 60초 간격)
-    gemini_fallback_models: list[str] = Field(default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-2.0-flash"])
+    gemini_fallback_models: list[str] = Field(default_factory=lambda: ["gemini-flash-latest", "gemini-flash-lite-latest"])
     gemini_price_per_mtok: dict[str, float] = Field(default_factory=lambda: {"input": 0.0, "output": 0.0})
     model: str = "claude-opus-5-5"
     effort: str = "medium"
@@ -60,7 +60,7 @@ class ResearchCfg(BaseModel):
 
 
 class TopicsCfg(BaseModel):
-    max_topics_per_day: int = 10
+    max_topics_per_day: int = 3
     min_videos_per_topic: int = 1
     weights: dict[str, float] = Field(
         default_factory=lambda: {"total_views": 0.35, "views_per_hour": 0.35, "video_count": 0.1, "fitness": 0.2}

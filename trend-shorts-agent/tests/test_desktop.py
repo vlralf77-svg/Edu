@@ -60,17 +60,17 @@ def test_read_env_ignores_inline_comment_only_values(tmp_path):
 
 def test_local_settings_override(tmp_path, monkeypatch):
     local = tmp_path / "settings.local.yaml"
-    cfg.save_local_settings({"topics": {"max_topics_per_day": 3}, "llm": {"model": "claude-haiku-5-5"}}, local)
+    cfg.save_local_settings({"topics": {"max_topics_per_day": 2}, "llm": {"model": "claude-haiku-5-5"}}, local)
     cfg.save_local_settings({"budget": {"max_daily_cost_usd": 0.5}}, local)
     data = yaml.safe_load(local.read_text(encoding="utf-8"))
-    assert data == {"topics": {"max_topics_per_day": 3}, "llm": {"model": "claude-haiku-5-5"},
+    assert data == {"topics": {"max_topics_per_day": 2}, "llm": {"model": "claude-haiku-5-5"},
                     "budget": {"max_daily_cost_usd": 0.5}}
     monkeypatch.setattr(cfg, "LOCAL_SETTINGS", local)
     monkeypatch.delenv("AGENT_SETTINGS", raising=False)
     s = cfg.load_settings()
-    assert s.topics.max_topics_per_day == 3 and s.llm.model == "claude-haiku-5-5"
+    assert s.topics.max_topics_per_day == 2 and s.llm.model == "claude-haiku-5-5"
     assert s.topics.min_videos_per_topic == 1          # 나머지는 settings.yaml 값
-    assert cfg.load_settings(use_local=False).topics.max_topics_per_day == 10
+    assert cfg.load_settings(use_local=False).topics.max_topics_per_day == 3
 
 
 # ---------------------------------------------------------------- 예약 작업
