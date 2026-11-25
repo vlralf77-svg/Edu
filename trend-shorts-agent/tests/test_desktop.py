@@ -124,14 +124,14 @@ def test_job_runner_runs_cli_in_background(tmp_path):
 
 
 def test_doctor_reports_missing_keys(settings, monkeypatch):
-    for k in ("GEMINI_API_KEY", "YOUTUBE_API_KEY", "PEXELS_API_KEY", "ELEVENLABS_API_KEY"):
+    for k in ("GEMINI_API_KEY", "YOUTUBE_API_KEY", "PEXELS_API_KEY", "PIXABAY_API_KEY", "ELEVENLABS_API_KEY"):
         monkeypatch.delenv(k, raising=False)
     checks = run_checks(settings)
     names = {c.name: c for c in checks}
     assert names["FFmpeg (영상 합성)"].ok and names["한글 폰트"].ok
     assert not names["Gemini API 키 (분석·대본, 무료)"].ok and not ready(checks)
     assert "Claude API 키 (분석·대본, 유료)" not in names       # 기본은 Gemini → Claude 키 불필요
-    for k in ("GEMINI_API_KEY", "YOUTUBE_API_KEY", "PEXELS_API_KEY", "ELEVENLABS_API_KEY"):
+    for k in ("GEMINI_API_KEY", "YOUTUBE_API_KEY", "PIXABAY_API_KEY", "ELEVENLABS_API_KEY"):  # Pexels 없이도 준비 완료
         monkeypatch.setenv(k, "x")
     settings.production.voice_id = "v"
     assert ready(run_checks(settings))

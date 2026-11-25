@@ -61,8 +61,13 @@ def run_checks(settings: Settings) -> list[Check]:
     else:
         key("ANTHROPIC_API_KEY", "Claude API 키 (분석·대본, 유료)", "console.anthropic.com")
     key("YOUTUBE_API_KEY", "YouTube Data API 키 (트렌드 수집)", "console.cloud.google.com")
-    key("PEXELS_API_KEY", "Pexels 키 (실사 영상 클립)", "pexels.com/api")
-    key("PIXABAY_API_KEY", "Pixabay 키 (추가 영상 클립)", "pixabay.com/api/docs", required=False)
+    # 실사 영상 클립: Pixabay 또는 Pexels 중 하나만 있으면 됨 (Pexels 는 신규 키 발급이 중단된 상태일 수 있음)
+    has_stock = bool(os.environ.get("PIXABAY_API_KEY") or os.environ.get("PEXELS_API_KEY"))
+    checks.append(Check("실사 영상 키 (Pixabay 또는 Pexels 중 하나)", has_stock,
+                        "설정됨" if has_stock else "없음",
+                        "설정 탭에 Pixabay 키 입력 (무료: pixabay.com 가입 → pixabay.com/api/docs 페이지에 키 표시)"))
+    key("PIXABAY_API_KEY", "Pixabay 키", "pixabay.com/api/docs", required=False)
+    key("PEXELS_API_KEY", "Pexels 키", "pexels.com/api", required=False)
     tts = settings.production.tts_provider
     if tts == "elevenlabs":
         key("ELEVENLABS_API_KEY", "ElevenLabs 키 (음성)", "elevenlabs.io")

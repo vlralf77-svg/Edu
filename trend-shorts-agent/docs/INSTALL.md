@@ -32,7 +32,9 @@
 1. **🩺 점검** — 빠진 항목 확인
 2. **⚙️ 설정 ▸ API 키** — 발급받은 키 입력 후 [키 저장]
    - **Gemini(무료)** — https://aistudio.google.com/apikey 에서 구글 계정으로 로그인 → "API 키 만들기" (카드 등록 불필요)
-   - YouTube Data API(무료), Pexels(무료), Pixabay(선택, 무료), ElevenLabs(음성)
+   - YouTube Data API(무료), ElevenLabs(음성)
+   - 실사 영상: **Pixabay(무료)** — pixabay.com 가입 후 https://pixabay.com/api/docs/ 페이지에 키가 표시됨.
+     Pexels(무료)도 쓸 수 있지만 신규 키 발급이 중단돼 있을 수 있어 둘 중 하나만 있으면 됩니다
    - Claude 키는 설정에서 AI 를 Claude(유료)로 바꿀 때만 필요
 3. **⚙️ 설정 ▸ 동작 설정** — 하루 주제 수, 비용 상한, 모델, 실행 시각, ElevenLabs 보이스 ID → [설정 저장]
 4. **🩺 점검 ▸ YouTube 수집만 시험해 보기** — 비용 없이 키가 맞는지 확인

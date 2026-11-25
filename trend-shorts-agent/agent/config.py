@@ -79,7 +79,7 @@ class ProductionCfg(BaseModel):
     voice_id: str = ""
     elevenlabs_model: str = "eleven_multilingual_v2"
     visual_sources: list[str] = Field(
-        default_factory=lambda: ["commons", "pexels_video", "pixabay_video", "pexels", "pixabay"])
+        default_factory=lambda: ["commons", "pixabay_video", "pexels_video", "pixabay", "pexels"])
     commons_max_per_subject: int = 2
     max_clip_mb: float = 80
     burn_subtitles: bool = True

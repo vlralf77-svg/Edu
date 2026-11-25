@@ -58,7 +58,7 @@ production:
   #  commons: 실존 인물·기관·장소 사진 (Wikimedia Commons, 상업 이용 가능 라이선스만, 키 불필요)
   #  pexels_video / pixabay_video: 실제 촬영 스톡 영상 클립 (무료 상업 이용)
   #  pexels / pixabay: 스톡 사진
-  visual_sources: [commons, pexels_video, pixabay_video, pexels, pixabay]
+  visual_sources: [commons, pixabay_video, pexels_video, pixabay, pexels]   # 키가 없는 소스는 자동으로 건너뜀
   commons_max_per_subject: 2  # 같은 인물 사진은 한 영상에 최대 2장 (나머지 장면은 현장감 있는 영상 클립)
   max_clip_mb: 80
   burn_subtitles: true
