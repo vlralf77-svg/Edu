@@ -19,7 +19,9 @@ collect:
   quota_stop_ratio: 0.8
 
 llm:
-  provider: gemini            # gemini: Google Gemini (무료 등급 가능, GEMINI_API_KEY) | claude: Anthropic Claude (유료)
+  provider: gemini            # gemini(무료, GEMINI_API_KEY) | groq(무료, GROQ_API_KEY) | openrouter(무료 모델, OPENROUTER_API_KEY) | claude(유료)
+  groq_model: llama-3.3-70b-versatile
+  openrouter_model: meta-llama/llama-3.3-70b-instruct:free
   gemini_model: gemini-flash-latest   # 구글이 관리하는 '최신 flash' 별칭. 한도가 끝나면 다른 flash 모델로 자동 전환
   gemini_min_interval_sec: 13 # 무료 등급 분당 호출 제한(약 5회) 대비 호출 간격(초)
   gemini_retries: 4           # 혼잡(503)·분당 한도(429) 때 같은 모델 재시도 횟수

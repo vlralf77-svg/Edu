@@ -157,6 +157,8 @@ elif page == PAGES[3]:
     st.caption(f"키는 이 PC 의 `{ENV_FILE}` 파일에만 저장됩니다. 칸을 비워 두면 기존 값이 유지됩니다.")
     KEYS = [
         ("GEMINI_API_KEY", "Gemini API 키 (무료 — LLM 을 Gemini 로 쓸 때)", "https://aistudio.google.com/apikey"),
+        ("GROQ_API_KEY", "Groq API 키 (무료 — AI 를 Groq 로 쓸 때)", "https://console.groq.com/keys"),
+        ("OPENROUTER_API_KEY", "OpenRouter API 키 (무료 모델 — AI 를 OpenRouter 로 쓸 때)", "https://openrouter.ai/keys"),
         ("ANTHROPIC_API_KEY", "Claude API 키 (유료 — LLM 을 Claude 로 쓸 때)", "https://console.anthropic.com"),
         ("YOUTUBE_API_KEY", "YouTube Data API 키 (필수, 무료)", "https://console.cloud.google.com/apis/library/youtube.googleapis.com"),
         ("PIXABAY_API_KEY", "Pixabay 키 (무료 — 실사 영상, 이것 또는 Pexels 하나 필요)", "https://pixabay.com/api/docs/"),
@@ -188,9 +190,10 @@ elif page == PAGES[3]:
         with c1:
             topics = st.slider("하루 주제 수 (많을수록 비용↑)", 1, 15, s.topics.max_topics_per_day)
             cost = st.number_input("하루 비용 상한 (달러, 넘으면 자동 중단)", 0.1, 50.0, float(s.budget.max_daily_cost_usd), 0.1)
-            provider = st.radio("분석·대본 AI", ["gemini", "claude"], index=["gemini", "claude"].index(s.llm.provider),
-                                format_func={"gemini": "Google Gemini (무료 등급)", "claude": "Anthropic Claude (유료)"}.get,
-                                horizontal=True)
+            PROV = {"gemini": "Google Gemini (무료)", "groq": "Groq (무료)", "openrouter": "OpenRouter (무료 모델)",
+                    "claude": "Anthropic Claude (유료)"}
+            provider = st.radio("분석·대본 AI", list(PROV), index=list(PROV).index(s.llm.provider),
+                                format_func=PROV.get, horizontal=True)
             gmodel = st.text_input("Gemini 모델 이름", s.llm.gemini_model,
                                    help="없어진 이름이면 사용 가능한 flash 모델로 자동 전환됩니다")
             model = st.selectbox("Claude 모델 (Claude 선택 시)", list(MODELS), index=list(MODELS).index(s.llm.model)
@@ -265,6 +268,21 @@ elif page == PAGES[5]:
     st.divider()
     if ready(checks):
         st.success("필수 항목이 모두 준비됐습니다.")
+    if settings.llm.provider == "gemini" and st.button("🤖 AI(Gemini) 연결 테스트 — 어떤 모델이 되는지 바로 확인"):
+        from agent.llm_gemini import probe_models
+        with st.spinner("모델마다 짧은 질문을 1번씩 보내는 중..."):
+            try:
+                results = probe_models(settings)
+            except Exception as e:  # noqa: BLE001
+                results = [{"model": "-", "ok": False, "status": 0, "message": str(e)}]
+        for r in results:
+            st.markdown(f"{'✅' if r['ok'] else '❌'} `{r['model']}` — {r['status']} {r['message']}")
+        good = [r["model"] for r in results if r["ok"]]
+        if good:
+            save_local_settings({"llm": {"gemini_model": good[0]}})
+            st.success(f"'{good[0]}' 모델이 동작합니다. 기본 모델로 저장했습니다. 이제 홈에서 분석을 시작하세요.")
+        else:
+            st.error("동작하는 Gemini 모델이 없습니다. 위 메시지를 확인하거나, 설정에서 AI 를 Groq(무료)로 바꿔 보세요.")
     if st.button("YouTube 수집만 시험해 보기 (비용 없음)"):
         start_job("collect", ["collect"])
     job_panel()

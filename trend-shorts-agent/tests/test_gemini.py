@@ -185,12 +185,12 @@ def test_per_minute_limit_waits_and_retries_same_model(gem):
 def test_overloaded_switches_to_fallback_model(gem, settings):
     settings.llm.gemini_retries = 2
     busy = (503, {"error": {"message": "This model is currently experiencing high demand."}})
-    srv = Server([busy, busy, busy, (200, ok('{"ok": true}'))])
+    srv = Server([busy, busy, (200, ok('{"ok": true}'))])
     llm = gem(srv)
     data, _ = llm.complete_json("q")
     assert data == {"ok": True} and llm.model == "gemini-flash-lite-latest"
     assert [u.split("/models/")[1].split(":")[0] for u, _, _ in srv.requests] == \
-        ["gemini-flash-latest"] * 3 + ["gemini-flash-lite-latest"]
+        ["gemini-flash-latest"] * 2 + ["gemini-flash-lite-latest"]
     # 이후 호출은 전환된 모델 유지
     srv.responses.append((200, ok('{"x": 1}')))
     llm.complete_json("q2")
@@ -310,3 +310,58 @@ def test_gemini_search_quota_falls_back_to_news(gem, settings):
     with RunContext("2026-11-25", settings, llm=gem(srv)) as ctx:
         data = research_topic(ctx, {"title": "AI 폰", "summary": "", "angle_ideas": []}, searcher=FakeRSS())
     assert len(data["sources"]) == 2
+
+
+def test_503_switches_model_after_one_retry(gem, settings):
+    busy = (503, {"error": {"message": "high demand"}})
+    srv = Server([busy, busy, (200, ok('{"ok": 1}'))], models=["gemini-flash-latest", "gemini-flash-lite-latest"])
+    llm = gem(srv)
+    assert llm.complete_json("q")[0] == {"ok": 1}
+    assert [u.split("/models/")[1].split(":")[0] for u, _, _ in srv.requests] == \
+        ["gemini-flash-latest", "gemini-flash-latest", "gemini-flash-lite-latest"]
+
+
+def test_probe_models_reports_each_model(settings, monkeypatch):
+    from agent.llm_gemini import probe_models
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setattr("agent.llm_gemini.time.sleep", lambda s: None)
+    srv = Server([(503, {"error": {"message": "high demand"}}), DAY_429, (200, ok("안녕"))],
+                 models=["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-9.0-flash"])
+    res = probe_models(settings, http=httpx.Client(transport=httpx.MockTransport(srv)))
+    assert [(r["model"], r["ok"], r["status"]) for r in res] == [
+        ("gemini-flash-latest", False, 503), ("gemini-flash-lite-latest", False, 429), ("gemini-9.0-flash", True, 200)]
+    assert res[1]["message"].startswith("[day]")
+
+
+def test_groq_openai_compatible(settings, monkeypatch):
+    from agent.llm_openai_compat import OpenAICompatLLM
+    monkeypatch.setenv("GROQ_API_KEY", "gk")
+    settings.llm.provider = "groq"
+    seen = []
+
+    def handler(req):
+        seen.append((str(req.url), req.headers["authorization"], json.loads(req.content)))
+        if len(seen) == 1:
+            return httpx.Response(429, headers={"retry-after": "3"}, json={"error": {"message": "rate"}})
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"a": 1}'}, "finish_reason": "stop"}],
+                                         "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
+    waits = []
+    llm = OpenAICompatLLM(settings, http=httpx.Client(transport=httpx.MockTransport(handler)), sleep=waits.append)
+    data, res = llm.complete_json("질문", schema={"type": "object"})
+    assert data == {"a": 1} and waits == [3.0]
+    url, auth, body = seen[-1]
+    assert url == "https://api.groq.com/openai/v1/chat/completions" and auth == "Bearer gk"
+    assert body["model"] == "llama-3.3-70b-versatile" and body["response_format"] == {"type": "json_object"}
+    assert "JSON 스키마" in body["messages"][0]["content"]
+    with pytest.raises(LLMError):
+        llm.complete("q", tools=[llm.web_search_tool()])
+
+
+def test_groq_requires_key_and_research_uses_news(settings, monkeypatch):
+    from agent.analysis.research import resolve_provider
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    settings.llm.provider = "groq"
+    with pytest.raises(LLMError, match="console.groq.com"):
+        make_llm(settings)
+    settings.research.provider = "auto"
+    assert resolve_provider(settings) == "news"

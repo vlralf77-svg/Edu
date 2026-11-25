@@ -180,6 +180,20 @@ def schedule_uninstall():
     typer.echo(uninstall_schedule())
 
 
+@app.command("llm-test")
+def llm_test():
+    """AI(Gemini) 연결 테스트 — 모델마다 짧은 질문 1번, 되는 모델을 기본으로 저장"""
+    from .config import save_local_settings
+    from .llm_gemini import probe_models
+    res = probe_models(get_settings())
+    for r in res:
+        typer.echo(f"{'OK ' if r['ok'] else 'X  '} {r['model']:<32} {r['status']} {r['message']}")
+    good = [r["model"] for r in res if r["ok"]]
+    if good:
+        save_local_settings({"llm": {"gemini_model": good[0]}})
+        typer.echo(f"\n→ '{good[0]}' 를 기본 모델로 저장했습니다.")
+
+
 @app.command()
 def doctor():
     """이 PC 에서 돌릴 준비가 됐는지 점검"""

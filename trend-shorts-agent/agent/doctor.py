@@ -58,6 +58,10 @@ def run_checks(settings: Settings) -> list[Check]:
 
     if settings.llm.provider == "gemini":
         key("GEMINI_API_KEY", "Gemini API 키 (분석·대본, 무료)", "aistudio.google.com/apikey")
+    elif settings.llm.provider == "groq":
+        key("GROQ_API_KEY", "Groq API 키 (분석·대본, 무료)", "console.groq.com/keys")
+    elif settings.llm.provider == "openrouter":
+        key("OPENROUTER_API_KEY", "OpenRouter API 키 (분석·대본, 무료 모델)", "openrouter.ai/keys")
     else:
         key("ANTHROPIC_API_KEY", "Claude API 키 (분석·대본, 유료)", "console.anthropic.com")
     key("YOUTUBE_API_KEY", "YouTube Data API 키 (트렌드 수집)", "console.cloud.google.com")

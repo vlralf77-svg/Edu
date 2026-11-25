@@ -177,4 +177,7 @@ def make_llm(settings: Settings, tracker: CostTracker | None = None):
     if settings.llm.provider == "gemini":
         from .llm_gemini import GeminiLLM
         return GeminiLLM(settings, tracker)
+    if settings.llm.provider in ("groq", "openrouter"):
+        from .llm_openai_compat import OpenAICompatLLM
+        return OpenAICompatLLM(settings, tracker)
     return LLM(settings, tracker)

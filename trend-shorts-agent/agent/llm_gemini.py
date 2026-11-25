@@ -273,9 +273,9 @@ class GeminiLLM:
                     continue
                 raise _Busy(429, msg, kind=kind)
             if r.status_code in (500, 502, 503, 504):
-                if attempt < retries:
-                    log.warning("Gemini %d (서버 혼잡) → %.0f초 후 재시도 [%d/%d]", r.status_code, delay, attempt + 1,
-                                retries)
+                if attempt < min(retries, 1):  # 혼잡은 모델 전체 문제라 1번만 재시도하고 다른 모델로
+                    log.warning("Gemini %d (서버 혼잡) → %.0f초 후 1번 더 시도, 안 되면 다른 모델로 (구글: %s)",
+                                r.status_code, delay, self._msg(r)[:120])
                     self.sleep(delay)
                     delay = min(delay * 2, 60)
                     continue
@@ -377,3 +377,30 @@ class GeminiLLM:
                       system: str | None = None, max_tokens: int | None = None) -> tuple[Any, LLMResult]:
         res = self.complete(prompt, system=system, tools=tools, json_schema=schema, max_tokens=max_tokens)
         return extract_json(res.text), res
+
+
+def probe_models(settings: Settings, http: httpx.Client | None = None, limit: int = 8) -> list[dict]:
+    """AI 연결 테스트: 모델마다 짧은 질문 1번(재시도 없음) → 결과·구글 원문 메시지. 성공 모델 목록 반환."""
+    llm = GeminiLLM(settings, http=http)
+    out = []
+    try:
+        llm._models = [n.removeprefix("models/") for n in llm.list_models()]
+    except httpx.HTTPStatusError as e:
+        return [{"model": "(모델 목록)", "ok": False, "status": e.response.status_code,
+                 "message": GeminiLLM._msg(e.response)}]
+    except httpx.HTTPError as e:
+        return [{"model": "(모델 목록)", "ok": False, "status": 0, "message": f"인터넷 연결 실패: {e}"}]
+    body = {"contents": [{"role": "user", "parts": [{"text": "한 단어로 답하세요: 안녕"}]}],
+            "generationConfig": {"maxOutputTokens": 64}}
+    for model in llm._candidates()[:limit]:
+        try:
+            r = llm.http.post(f"{API}/models/{model}:generateContent", json=body, headers={"x-goog-api-key": llm.key})
+        except httpx.HTTPError as e:
+            out.append({"model": model, "ok": False, "status": 0, "message": str(e)})
+            continue
+        msg = "" if r.status_code == 200 else GeminiLLM._msg(r)
+        if r.status_code == 429:
+            msg = f"[{classify_429(r)[0]}] {msg}"
+        out.append({"model": model, "ok": r.status_code == 200, "status": r.status_code, "message": msg[:300]})
+        time.sleep(1.5)
+    return out

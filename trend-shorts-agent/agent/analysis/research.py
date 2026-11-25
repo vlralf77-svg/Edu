@@ -132,7 +132,7 @@ class NewsRSSSearch(_HTTPSearch):
 def resolve_provider(settings) -> str:
     p = settings.research.provider
     if p == "auto":  # Gemini 무료 등급은 구글 검색 한도가 매우 작아 뉴스 RSS 사용
-        return "news" if settings.llm.provider == "gemini" else "llm"
+        return "llm" if settings.llm.provider == "claude" else "news"
     return p
 
 
@@ -149,7 +149,7 @@ def research_topic(ctx, topic: dict, searcher: _HTTPSearch | None = None) -> dic
             return finalize(data, s.research.min_sources, _searched_urls(res.content) or None)
         except Exception as e:  # noqa: BLE001
             from ..costs import BudgetExceeded
-            if isinstance(e, BudgetExceeded) or s.llm.provider != "gemini":
+            if isinstance(e, BudgetExceeded) or s.llm.provider == "claude":
                 raise
             log.warning("Gemini 구글 검색 실패(%s) → 구글 뉴스 RSS 로 조사", str(e)[:120])
             provider = "news"

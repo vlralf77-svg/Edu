@@ -38,7 +38,9 @@ class CollectCfg(BaseModel):
 
 
 class LLMCfg(BaseModel):
-    provider: Literal["gemini", "claude"] = "gemini"
+    provider: Literal["gemini", "groq", "openrouter", "claude"] = "gemini"
+    groq_model: str = "llama-3.3-70b-versatile"
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
     gemini_model: str = "gemini-flash-latest"   # 구글이 관리하는 '최신 flash' 별칭
     gemini_min_interval_sec: float = 13.0
     gemini_retries: int = 4                     # 같은 모델 재시도 횟수 (5→10→20→40초…최대 60초 간격)
