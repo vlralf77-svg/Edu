@@ -16,7 +16,8 @@ SR = 44100
 
 
 def run_ffmpeg(args: list[str]) -> None:
-    proc = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *args], capture_output=True,
+    from ..tools import tool
+    proc = subprocess.run([tool("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error", *args], capture_output=True,
                           text=True)
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg 실패: {proc.stderr[-1500:]}")
@@ -141,12 +142,13 @@ def finalize(video: Path, audio: Path, out: Path, total: float, ass: Path | None
 
 
 def probe(path: Path) -> dict:
-    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height",
+    from ..tools import tool
+    out = subprocess.run([tool("ffprobe"), "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height",
                           "-of", "json", str(path)], capture_output=True, text=True, check=True).stdout
     data = json.loads(out)
     v = next((s for s in data["streams"] if s["codec_type"] == "video"), {})
     has_audio = any(s["codec_type"] == "audio" for s in data["streams"])
-    vd = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(path), "-af", "volumedetect", "-vn", "-f", "null", "-"],
+    vd = subprocess.run([tool("ffmpeg"), "-hide_banner", "-i", str(path), "-af", "volumedetect", "-vn", "-f", "null", "-"],
                         capture_output=True, text=True).stderr
     mx = re.search(r"max_volume: (-?[\d.]+) dB", vd)
     mean = re.search(r"mean_volume: (-?[\d.]+) dB", vd)

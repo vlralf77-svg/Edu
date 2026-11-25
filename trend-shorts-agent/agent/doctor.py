@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 
 from .config import Settings
+from .tools import find_tool
 
 
 @dataclass
@@ -21,7 +22,8 @@ class Check:
 
 def _ffmpeg_has_filters() -> bool:
     try:
-        out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True,
+        from .tools import find_tool
+        out = subprocess.run([find_tool("ffmpeg") or "ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True,
                              timeout=20).stdout
     except (OSError, subprocess.TimeoutExpired):
         return False
@@ -30,14 +32,14 @@ def _ffmpeg_has_filters() -> bool:
 
 def run_checks(settings: Settings) -> list[Check]:
     win, mac = sys.platform.startswith("win"), sys.platform == "darwin"
-    ff_fix = ("설치 프로그램(install_windows.bat)을 다시 실행하거나 PowerShell 에서: winget install Gyan.FFmpeg" if win
+    ff_fix = ("🩺 점검 화면의 [FFmpeg 자동 설치] 버튼을 누르세요" if win
               else "brew install ffmpeg" if mac else "sudo apt install ffmpeg")
     checks = [
         Check("Python 3.11 이상", sys.version_info >= (3, 11), sys.version.split()[0]),
-        Check("FFmpeg (영상 합성)", bool(shutil.which("ffmpeg")), shutil.which("ffmpeg") or "없음", ff_fix),
-        Check("FFprobe (결과 검증)", bool(shutil.which("ffprobe")), shutil.which("ffprobe") or "없음", ff_fix),
+        Check("FFmpeg (영상 합성)", bool(find_tool("ffmpeg")), find_tool("ffmpeg") or "없음", ff_fix),
+        Check("FFprobe (결과 검증)", bool(find_tool("ffprobe")), find_tool("ffprobe") or "없음", ff_fix),
     ]
-    if shutil.which("ffmpeg"):
+    if find_tool("ffmpeg"):
         checks.append(Check("FFmpeg 자막·효과 필터", _ffmpeg_has_filters(), "ass / zoompan / loudnorm",
                             "자막 기능이 포함된 전체 빌드가 필요합니다 (" + ff_fix + ")"))
     try:

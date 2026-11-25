@@ -288,6 +288,9 @@ elif page == PAGES[5]:
             st.success(f"'{good[0]}' 모델이 동작합니다. 기본 모델로 저장했습니다. 이제 홈에서 분석을 시작하세요.")
         else:
             st.error("동작하는 Gemini 모델이 없습니다. 위 메시지를 확인하거나, 설정에서 AI 를 Groq(무료)로 바꿔 보세요.")
+    from agent.tools import find_tool
+    if not (find_tool("ffmpeg") and find_tool("ffprobe")) and st.button("🔧 FFmpeg 자동 설치 (약 100MB 다운로드)"):
+        start_job("setup-ffmpeg", ["setup-ffmpeg"])
     if st.button("YouTube 수집만 시험해 보기 (비용 없음)"):
         start_job("collect", ["collect"])
     job_panel()

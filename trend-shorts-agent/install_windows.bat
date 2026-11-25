@@ -23,22 +23,17 @@ if errorlevel 1 (
   pause & exit /b 1
 )
 
-echo [2/5] FFmpeg (영상 합성 프로그램) 확인
-where ffmpeg >nul 2>nul
-if errorlevel 1 (
-  winget install -e --id Gyan.FFmpeg --accept-source-agreements --accept-package-agreements
-  if errorlevel 1 (
-    echo [주의] FFmpeg 자동 설치 실패. https://www.gyan.dev/ffmpeg/builds/ 에서 full 빌드를 받아 PATH 에 추가하세요.
-  )
-)
-
-echo [3/5] 파이썬과 필요한 부품 설치 (처음엔 몇 분 걸립니다)
+echo [2/5] 파이썬과 필요한 부품 설치 (처음엔 몇 분 걸립니다)
 if not exist ".venv\Scripts\python.exe" (
   uv venv --python 3.12 .venv
   if errorlevel 1 ( echo [오류] 파이썬 환경 생성 실패 & pause & exit /b 1 )
 )
 uv pip install --python .venv\Scripts\python.exe -e ".[review]"
 if errorlevel 1 ( echo [오류] 부품 설치 실패 & pause & exit /b 1 )
+
+echo [3/5] FFmpeg (영상 합성 프로그램) 준비 - 없으면 자동으로 내려받습니다
+".venv\Scripts\python.exe" -m agent setup-ffmpeg
+if errorlevel 1 echo [주의] FFmpeg 자동 설치 실패 - 제어판 점검 화면에서 다시 시도할 수 있습니다
 
 echo [4/5] 설정 파일 준비
 if not exist .env copy .env.example .env >nul

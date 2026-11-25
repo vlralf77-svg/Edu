@@ -34,7 +34,8 @@ class TTSProvider:
 
 def to_wav(src: Path, dst: Path, atempo: float = 1.0) -> None:
     af = ["-af", f"atempo={atempo:.3f}"] if abs(atempo - 1.0) > 1e-3 else []
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), *af, "-ac", "1", "-ar", "44100",
+    from ...tools import tool
+    subprocess.run([tool("ffmpeg"), "-y", "-loglevel", "error", "-i", str(src), *af, "-ac", "1", "-ar", "44100",
                     "-c:a", "pcm_s16le", str(dst)], check=True)
 
 

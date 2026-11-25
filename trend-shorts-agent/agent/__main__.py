@@ -180,6 +180,17 @@ def schedule_uninstall():
     typer.echo(uninstall_schedule())
 
 
+@app.command("setup-ffmpeg")
+def setup_ffmpeg(force: bool = typer.Option(False, "--force")):
+    """FFmpeg 가 없으면 내려받아 tools/ffmpeg 에 설치 (Windows)"""
+    from .tools import find_tool, install_ffmpeg
+    if find_tool("ffmpeg") and find_tool("ffprobe") and not force:
+        typer.echo(f"FFmpeg 이미 있음: {find_tool('ffmpeg')}")
+        return
+    install_ffmpeg()
+    typer.echo(f"설치 완료: {find_tool('ffmpeg')}")
+
+
 @app.command("llm-test")
 def llm_test():
     """AI(Gemini) 연결 테스트 — 모델마다 짧은 질문 1번, 되는 모델을 기본으로 저장"""

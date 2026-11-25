@@ -92,7 +92,8 @@ def choose(tracks: list[Track], mood: str, bpm: int | None, recently_used: set[s
 def prepare(track: Track, duration: float, out_dir: Path, fade_in: float, fade_out: float) -> tuple[Path, dict]:
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp = out_dir / "bgm_lib_decoded.wav"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(track.path), "-ac", "2", "-ar", str(SR),
+    from ...tools import tool
+    subprocess.run([tool("ffmpeg"), "-y", "-loglevel", "error", "-i", str(track.path), "-ac", "2", "-ar", str(SR),
                     str(tmp)], check=True)
     audio, _ = sf.read(str(tmp), dtype="float32", always_2d=True)
     tmp.unlink(missing_ok=True)

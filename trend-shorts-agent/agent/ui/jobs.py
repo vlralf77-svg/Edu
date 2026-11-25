@@ -19,6 +19,7 @@ JOB_LABELS = {
     "produce": "승인된 영상 제작",
     "sample": "샘플 영상 만들기",
     "collect": "YouTube 수집 테스트",
+    "setup-ffmpeg": "FFmpeg 자동 설치",
 }
 
 
