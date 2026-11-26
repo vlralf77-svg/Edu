@@ -131,8 +131,6 @@ def publish(production_id: int = typer.Option(..., "--production-id"), privacy: 
     from .models import Production, session_scope
     from .publish.youtube_upload import upload
     st = get_settings()
-    if not st.publish.enabled:
-        raise typer.Exit("settings.yaml 의 publish.enabled 가 false 입니다")
     s = session_scope(st.db_url)
     prod = s.get(Production, production_id)
     if not prod or prod.status != "produced":
@@ -141,7 +139,15 @@ def publish(production_id: int = typer.Option(..., "--production-id"), privacy: 
     yt_id = upload(vid, vid.parent / "meta.json", privacy or st.publish.privacy)
     prod.youtube_id, prod.status = yt_id, "uploaded"
     s.commit()
-    typer.echo(f"https://youtu.be/{yt_id}")
+    typer.echo(f"업로드 완료 (비공개): https://youtu.be/{yt_id}")
+    typer.echo(f"YouTube Studio 에서 확인: https://studio.youtube.com/video/{yt_id}/edit")
+
+
+@app.command("youtube-login")
+def youtube_login():
+    """YouTube 업로드용 구글 계정 연결 (처음 한 번, 브라우저 로그인)"""
+    from .publish.youtube_upload import login
+    typer.echo(f"연결 완료 — 업로드 채널: {login()}")
 
 
 @app.command()

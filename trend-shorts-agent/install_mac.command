@@ -9,7 +9,7 @@ fi
 echo "[1/4] FFmpeg 설치 확인"; command -v ffmpeg >/dev/null || brew install ffmpeg
 echo "[2/4] uv 설치 확인"; command -v uv >/dev/null || brew install uv
 echo "[3/4] 파이썬 환경 설치"
-{ [ -x .venv/bin/python ] || uv venv --python 3.12 .venv; } && uv pip install --python .venv/bin/python -e ".[review]" || { echo "설치 실패"; read -r; exit 1; }
+{ [ -x .venv/bin/python ] || uv venv --python 3.12 .venv; } && uv pip install --python .venv/bin/python -e ".[review,publish]" || { echo "설치 실패"; read -r; exit 1; }
 echo "[4/4] 설정 파일 준비"; [ -f .env ] || cp .env.example .env; mkdir -p data
 chmod +x start_mac.command
 echo; echo "설치 완료! start_mac.command 를 더블클릭하면 제어판이 열립니다."

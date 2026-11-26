@@ -28,7 +28,7 @@ if not exist ".venv\Scripts\python.exe" (
   uv venv --python 3.12 .venv
   if errorlevel 1 ( echo [오류] 파이썬 환경 생성 실패 & pause & exit /b 1 )
 )
-uv pip install --python .venv\Scripts\python.exe -e ".[review]"
+uv pip install --python .venv\Scripts\python.exe -e ".[review,publish]"
 if errorlevel 1 ( echo [오류] 부품 설치 실패 & pause & exit /b 1 )
 
 echo [3/5] FFmpeg (영상 합성 프로그램) 준비 - 없으면 자동으로 내려받습니다

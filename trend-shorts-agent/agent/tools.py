@@ -97,3 +97,23 @@ def install_ffmpeg(url: str = FFMPEG_ZIP_URL, http=None) -> Path:
         raise ToolMissing("FFmpeg 압축 파일에서 실행 파일을 찾지 못했습니다")
     log.warning("FFmpeg 설치 완료: %s", LOCAL_DIR)
     return LOCAL_DIR
+
+
+def ensure_package(pip_name: str, import_name: str) -> None:
+    """부품(파이썬 패키지)이 없으면 자동 설치 (uv 사용, 없으면 pip). 구버전 설치본 대응."""
+    import importlib
+    import subprocess
+    try:
+        importlib.import_module(import_name)
+        return
+    except ImportError:
+        pass
+    log.warning("필요한 부품 '%s' 을 설치합니다 (처음 한 번)...", pip_name)
+    uv = shutil.which("uv") or next((p for p in (os.path.expanduser("~/.local/bin/uv.exe"),
+                                                 os.path.expanduser("~/.local/bin/uv")) if os.path.exists(p)), None)
+    cmd = ([uv, "pip", "install", "--python", sys.executable, *pip_name.split()] if uv
+           else [sys.executable, "-m", "pip", "install", *pip_name.split()])
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    importlib.invalidate_caches()
+    if r.returncode != 0:
+        raise RuntimeError(f"'{pip_name}' 자동 설치 실패 — install_windows.bat 를 다시 실행하세요.\n{r.stderr[-500:]}")

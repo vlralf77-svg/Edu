@@ -145,10 +145,27 @@ elif page == PAGES[2]:
                         m = json.loads(meta.read_text(encoding="utf-8"))
                         st.text_input("제목 (복사해서 업로드에 사용)", m.get("title", ""), key=f"t{prod.id}")
                         st.text_area("설명란 (출처·크레딧 포함)", m.get("description", ""), height=220, key=f"d{prod.id}")
-                    st.caption(f"길이 {prod.duration:.0f}초 · YouTube 업로드 시 '변경되거나 합성된 콘텐츠'를 '예'로 설정하세요")
+                    st.caption(f"길이 {prod.duration:.0f}초")
+                    st.markdown("**YouTube 에 올리기**")
+                    if prod.youtube_id:
+                        st.success(f"업로드됨 (비공개): https://youtu.be/{prod.youtube_id}")
+                        st.link_button("YouTube Studio 에서 확인·공개 설정",
+                                       f"https://studio.youtube.com/video/{prod.youtube_id}/edit")
+                    else:
+                        from agent.publish.youtube_upload import client_secret_path, token_path
+                        ready_yt = client_secret_path().exists()
+                        if st.button("📤 YouTube 에 비공개로 자동 업로드", key=f"up{prod.id}", disabled=not ready_yt,
+                                     help=None if ready_yt else "⚙️ 설정 ▸ YouTube 업로드 에서 먼저 연결하세요"):
+                            start_job("publish", ["publish", "--production-id", str(prod.id)])
+                        if not ready_yt:
+                            st.caption("자동 업로드는 ⚙️ 설정 ▸ YouTube 업로드 에서 한 번 연결하면 쓸 수 있습니다.")
+                        st.link_button("📋 직접 올리기 (YouTube Studio 열기)", "https://www.youtube.com/upload")
+                        st.caption("직접 올릴 땐: [영상 저장] → Studio 에 끌어다 놓기 → 위 제목·설명 붙여넣기 → "
+                                   "'변경되거나 합성된 콘텐츠' = 예")
             elif prod.status == "failed":
                 st.error("제작 실패 — 아래 내용을 그대로 복사해 문의하세요")
                 st.code(prod.error or "", language="text")
+    job_panel()
 
 # ================================================================ 설정
 elif page == PAGES[3]:
@@ -179,6 +196,43 @@ elif page == PAGES[3]:
             save_env(vals)
             st.success("저장했습니다.")
             st.rerun()
+
+    st.subheader("YouTube 업로드 (선택)")
+    from agent.publish.youtube_upload import client_secret_path, token_path
+    with st.expander("자동 업로드 설정 방법 (처음 한 번, 약 10분)", expanded=not client_secret_path().exists()):
+        st.markdown("""
+1. [Google Cloud 콘솔](https://console.cloud.google.com) 에서 **YouTube 키를 만든 프로젝트**를 선택
+2. **API 및 서비스 ▸ 라이브러리** 에서 **YouTube Data API v3** 가 '사용' 상태인지 확인
+3. **OAuth 동의 화면**: 사용자 유형 **외부** → 앱 이름·이메일 입력 → **테스트 사용자**에 업로드할 채널의 구글 계정 추가
+4. **사용자 인증 정보 ▸ 사용자 인증 정보 만들기 ▸ OAuth 클라이언트 ID** → 애플리케이션 유형 **데스크톱 앱** → 만들기 → **JSON 다운로드**
+5. 아래에 그 JSON 파일을 올리고 **[YouTube 계정 연결]** → 브라우저에서 채널 계정으로 로그인·허용
+
+⚠️ **YouTube 정책상, 심사(API 감사)를 받지 않은 개인 프로젝트로 올린 영상은 '비공개'로 잠깁니다.**
+공개하려면 YouTube API 규정 준수 심사를 신청하거나(무료, 시간 소요), 🎬 만든 영상의 **[직접 올리기]** 를 사용하세요.
+업로드 1회에 YouTube API 쿼터 약 1,600 (하루 10,000) 을 씁니다.
+""")
+        up = st.file_uploader("OAuth 클라이언트 JSON (client_secret_….json)", type=["json"])
+        if up is not None:
+            import json as _json
+            try:
+                data = _json.loads(up.getvalue().decode("utf-8"))
+                if "installed" not in data:
+                    st.error("'데스크톱 앱' 유형의 OAuth 클라이언트 JSON 이 아닙니다. 4번에서 유형을 '데스크톱 앱'으로 만들어 주세요.")
+                else:
+                    client_secret_path().parent.mkdir(parents=True, exist_ok=True)
+                    client_secret_path().write_bytes(up.getvalue())
+                    st.success("저장했습니다. 이제 [YouTube 계정 연결] 을 누르세요.")
+            except ValueError:
+                st.error("JSON 파일을 읽을 수 없습니다")
+        c1, c2 = st.columns(2)
+        st.caption(f"OAuth 파일: {'✅ 있음' if client_secret_path().exists() else '❌ 없음'} · "
+                   f"계정 연결: {'✅ 됨' if token_path().exists() else '❌ 안 됨'}")
+        if c1.button("🔗 YouTube 계정 연결", disabled=not client_secret_path().exists()):
+            start_job("youtube-login", ["youtube-login"])
+        if c2.button("연결 해제", disabled=not token_path().exists()):
+            token_path().unlink(missing_ok=True)
+            st.rerun()
+    job_panel()
 
     st.subheader("동작 설정")
     s = settings
