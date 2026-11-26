@@ -14,7 +14,7 @@ def render_review(settings, box=None) -> None:
     box = box or st.sidebar
     session = session_scope(settings.db_url)
 
-    dates = [r.date for r in session.scalars(select(Run).order_by(Run.date.desc()))]
+    dates = [r.date for r in session.scalars(select(Run).order_by(Run.id.desc()))]
     if not dates:
         st.info("아직 실행 기록이 없습니다. 홈에서 [오늘 트렌드 분석 시작] 을 눌러 주세요.")
         return

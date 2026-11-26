@@ -36,7 +36,7 @@ topic_videos = Table(
 class Run(Base):
     __tablename__ = "runs"
     id: Mapped[int] = mapped_column(primary_key=True)
-    date: Mapped[str] = mapped_column(String(10), unique=True, index=True)  # YYYY-MM-DD
+    date: Mapped[str] = mapped_column(String(16), unique=True, index=True)  # YYYY-MM-DD 또는 YYYY-MM-DD-N(같은 날 N번째)
     status: Mapped[str] = mapped_column(String(32), default="started")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -62,7 +62,7 @@ class Video(Base):
     tags: Mapped[list[str]] = mapped_column(JSON, default=list)
     description: Mapped[str] = mapped_column(Text, default="")
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    run_date: Mapped[str] = mapped_column(String(10), index=True, default="")
+    run_date: Mapped[str] = mapped_column(String(16), index=True, default="")
 
 
 class Topic(Base):

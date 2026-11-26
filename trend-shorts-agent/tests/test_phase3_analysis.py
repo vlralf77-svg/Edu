@@ -205,3 +205,23 @@ def test_run_daily_retries_empty_clustering_and_writes_summary(settings, yt_tran
     assert llm.calls.count("cluster") == 2
     summary = (settings.run_dir("2026-11-25") / "summary.txt").read_text(encoding="utf-8")
     assert "검토 후보 2개" in summary and "승인된 영상 제작" in summary
+
+
+def test_second_run_same_day_gets_new_batch_and_excludes_used_videos(settings, yt_transport):
+    from agent.pipeline import next_batch, today_runs
+    from agent.context import today
+    day = today(settings)
+    assert next_batch(settings) == day
+    llm = FakeLLM()
+    with RunContext(day, settings, llm=llm) as ctx:
+        _collect(ctx, yt_transport)
+        step_cluster(ctx)
+        used = {v.video_id for t in ctx.session.query(Topic) for v in t.videos}
+        assert used
+    nb = next_batch(settings)
+    assert nb == f"{day}-2"
+    with RunContext(nb, settings, llm=llm) as ctx:
+        vids = {v["video_id"] for v in _collect(ctx, yt_transport)}
+        assert not (vids & used)                       # 첫 실행에서 쓴 영상은 제외
+        assert [r.date for r in today_runs(ctx.session, day)] == [nb, day]
+    assert next_batch(settings) == f"{day}-3"

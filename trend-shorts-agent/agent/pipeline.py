@@ -215,3 +215,27 @@ def latest_run_date(settings) -> str | None:
     d = s.scalar(select(Run.date).order_by(Run.date.desc()))
     s.close()
     return d
+
+
+def today_runs(session, day: str) -> list:
+    """오늘 실행들 (첫 실행 'YYYY-MM-DD', 추가 실행 'YYYY-MM-DD-2' …), 최근 것 먼저."""
+    return list(session.scalars(select(Run).where((Run.date == day) | Run.date.like(f"{day}-%"))
+                                .order_by(Run.id.desc())))
+
+
+def next_batch(settings) -> str:
+    """같은 날 새로 한 번 더 돌릴 때 쓸 실행 이름."""
+    from .context import today
+    from .models import session_scope
+    day = today(settings)
+    s = session_scope(settings.db_url)
+    try:
+        names = {r.date for r in today_runs(s, day)}
+    finally:
+        s.close()
+    if day not in names:
+        return day
+    n = 2
+    while f"{day}-{n}" in names:
+        n += 1
+    return f"{day}-{n}"

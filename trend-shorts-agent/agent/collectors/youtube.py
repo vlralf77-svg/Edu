@@ -148,7 +148,8 @@ def filter_videos(videos: list[dict], cfg, now: datetime, exclude_ids: set[str])
 
 def recently_processed_ids(session, days: int, today: str) -> set[str]:
     """지난 N일 동안 다른 run 에서 이미 주제로 묶인(=처리된) 영상."""
-    since = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=days)).strftime("%Y-%m-%d")
+    # today 는 'YYYY-MM-DD' 또는 같은 날 추가 실행 'YYYY-MM-DD-N' → 같은 날 앞선 실행에서 쓴 영상도 제외됨
+    since = (datetime.strptime(today[:10], "%Y-%m-%d") - timedelta(days=days)).strftime("%Y-%m-%d")
     q = (select(topic_videos.c.video_id).join(Topic, Topic.id == topic_videos.c.topic_id)
          .join(Run, Run.id == Topic.run_id).where(Run.date >= since, Run.date < today))
     return set(session.scalars(q))

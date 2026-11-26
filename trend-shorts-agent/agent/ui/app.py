@@ -79,35 +79,43 @@ if page == PAGES[0]:
         missing = [c.name for c in checks if c.required and not c.ok]
         st.warning("아직 준비가 덜 됐습니다: " + ", ".join(missing) + " → **⚙️ 설정 / 🩺 점검** 메뉴에서 해결하세요")
     d = today(settings)
-    run = session.scalar(select(Run).where(Run.date == d))
+    from agent.pipeline import today_runs
+    runs_today = today_runs(session, d)
+    run = runs_today[0] if runs_today else None
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("오늘 날짜", d)
+    c1.metric("오늘 날짜", d, help=f"오늘 실행 {len(runs_today)}회" if runs_today else None)
     STATUS_KO = {"started": "진행 중", "collected": "수집 완료", "clustered": "주제 정리 완료", "researched": "조사 완료",
                  "scripted": "대본 작성 완료", "checked": "팩트체크 완료", "pending_review": "검토 대기"}
-    c2.metric("오늘 분석", STATUS_KO.get(run.status, run.status) if run else "시작 전")
+    c2.metric(f"오늘 분석 ({len(runs_today)}회차)" if len(runs_today) > 1 else "오늘 분석",
+              STATUS_KO.get(run.status, run.status) if run else "시작 전")
     pending = session.scalars(select(Script).where(Script.approval_status == "pending_review")).all()
     approved = session.scalars(select(Script).where(Script.approval_status == "approved")).all()
     c3.metric("검토 대기 / 승인", f"{len(pending)} / {len(approved)}")
     c4.metric("오늘 사용 비용" + (" (Gemini 무료)" if settings.llm.provider == "gemini" else ""),
-              f"${run.cost_usd:.2f}" if run else "$0.00",
+              f"${sum(r.cost_usd or 0 for r in runs_today):.2f}",
               help=f"하루 상한 ${settings.budget.max_daily_cost_usd}")
 
     st.subheader("할 일")
     b1, b2, b3 = st.columns(3)
-    if b1.button("① 오늘 트렌드 분석 시작", type="primary", use_container_width=True,
-                 help="YouTube 인기 영상 수집 → 주제 묶기 → 웹 조사 → 대본 작성 → 팩트체크"):
-        start_job("run-daily", ["run-daily"])
+    finished = run is not None and run.status == "pending_review" and not run.error
+    if finished:
+        if b1.button("① 🔄 새로 한 번 더 (새 트렌드 수집)", type="primary", use_container_width=True,
+                     help="오늘 앞에서 다룬 영상은 빼고 새로 수집 → 새 주제·대본을 만듭니다"):
+            start_job("run-daily", ["run-daily", "--new"])
+    elif b1.button("① 오늘 트렌드 분석 " + ("이어서 하기" if run else "시작"), type="primary",
+                   use_container_width=True, help="YouTube 인기 영상 수집 → 주제 묶기 → 웹 조사 → 대본 작성 → 팩트체크"):
+        start_job("run-daily", ["run-daily"] + (["--run", run.date] if run else []))
     b2.markdown("② **✅ 후보 검토** 메뉴에서 승인")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
-    summary = settings.data_dir / "runs" / d / "summary.txt"
+    summary = settings.data_dir / "runs" / (run.date if run else d) / "summary.txt"
     if summary.exists():
-        st.info("**오늘 분석 결과**\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
+        st.info(f"**오늘 분석 결과** ({run.date if run else d})\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
     if run:
         with st.expander("결과가 이상하면: 오늘 분석을 처음부터 다시"):
             st.write("수집부터 전부 다시 합니다 (YouTube 쿼터 약 300 사용, Gemini 무료).")
             if st.button("처음부터 다시 분석"):
-                start_job("run-daily", ["run-daily", "--force"])
+                start_job("run-daily", ["run-daily", "--force", "--run", run.date])
     with st.expander("처음이라면: 키 없이 샘플 영상 만들어 보기"):
         st.write("API 키 없이 샘플 대본으로 영상 제작 과정을 시험합니다 (테스트 음성·글자 화면).")
         if st.button("샘플 영상 만들기"):
