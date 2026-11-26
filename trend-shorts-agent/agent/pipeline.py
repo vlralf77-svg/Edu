@@ -223,8 +223,8 @@ def today_runs(session, day: str) -> list:
                                 .order_by(Run.id.desc())))
 
 
-def next_batch(settings) -> str:
-    """같은 날 새로 한 번 더 돌릴 때 쓸 실행 이름."""
+def next_batch(settings, kids: bool = False) -> str:
+    """같은 날 새로 한 번 더 돌릴 때 쓸 실행 이름. 어린이용은 'YYYY-MM-DD-kids', '-kids-2' …"""
     from .context import today
     from .models import session_scope
     day = today(settings)
@@ -233,9 +233,10 @@ def next_batch(settings) -> str:
         names = {r.date for r in today_runs(s, day)}
     finally:
         s.close()
-    if day not in names:
-        return day
+    base = f"{day}-kids" if kids else day
+    if base not in names:
+        return base
     n = 2
-    while f"{day}-{n}" in names:
+    while f"{base}-{n}" in names:
         n += 1
-    return f"{day}-{n}"
+    return f"{base}-{n}"

@@ -47,7 +47,7 @@ class FakeLLM:
         return {"type": "web_search_20260209", "name": "web_search", "max_uses": max_uses}
 
     def complete_json(self, prompt, schema=None, tools=None, system=None, max_tokens=None):
-        if "같은 이슈" in prompt:
+        if "같은 이슈" in prompt or "이슈만 골라 묶어라" in prompt:
             self.calls.append("cluster")
             ids = re.findall(r"^(v\d+) \|", prompt, re.M)
             data = {"topics": [
@@ -71,7 +71,7 @@ class FakeLLM:
                  "facts": []}],
                 "key_facts": ["A", "B"], "contradictions": [], "confidence": "high"}
             return data, LLMResult(text="", content=[WebResult(urls + ["https://www.youtube.com/watch?v=1"])])
-        if "숏폼 뉴스 브리핑 작가" in prompt:
+        if "숏폼 뉴스 브리핑 작가" in prompt or "숏폼 영상 작가" in prompt:
             self.calls.append("write")
             n = self.script_lengths.pop(0) if len(self.script_lengths) > 1 else self.script_lengths[0]
             data = {"title": "AI 폰, 진짜 달라질까? 제목이 아주 아주 길어서 사십 자를 넘어가는 경우를 테스트합니다",

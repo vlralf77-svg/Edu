@@ -75,6 +75,28 @@ def normalize_script(script: dict, topic_key: str, cps: float, allowed_sources: 
     return script
 
 
+def cta_instruction(sc) -> str:
+    if sc.cta_style == "direct":
+        return f"마지막 장면 끝 문장은 반드시 시청자에게 좋아요와 구독을 부탁하는 말로 끝낸다 (예: \"{sc.cta_text}\")."
+    if sc.cta_style == "soft":
+        return f"마지막 장면은 다정한 마무리 인사로 끝낸다 (예: \"{sc.cta_soft_text}\"). 구독·좋아요를 조르지 않는다."
+    return "마지막 장면은 한 줄 정리로 끝낸다."
+
+
+def ensure_cta(script: dict, sc) -> dict:
+    """AI 가 빼먹었으면 마지막 장면에 행동 유도 문장을 붙인다."""
+    if sc.cta_style == "none" or not script.get("scenes"):
+        return script
+    last = script["scenes"][-1]
+    n = last.get("narration", "")
+    if sc.cta_style == "direct" and not ("구독" in n and "좋아요" in n):
+        last["narration"] = (n.rstrip() + " " + sc.cta_text).strip()
+    elif sc.cta_style == "soft" and not any(w in n for w in ("만나요", "안녕", "다음에")):
+        last["narration"] = (n.rstrip() + " " + sc.cta_soft_text).strip()
+    script["cta_style"] = sc.cta_style
+    return script
+
+
 def research_brief(research: dict) -> str:
     lines = []
     for s in research.get("sources", []):
@@ -97,8 +119,8 @@ def write_for_topic(ctx, topic: Topic) -> dict:
     script: dict = {}
     for attempt in range(sc.max_rewrites + 1):
         prompt = load_prompt(
-            "write_script", max_seconds=sc.max_seconds, min_chars=int(target * 0.93), max_chars=int(target * 1.07),
-            tone=sc.tone, topic=topic.title, angles=" / ".join(topic.angle_ideas or []),
+            "write_script_kids" if ctx.settings.profile == "kids" else "write_script", max_seconds=sc.max_seconds,
+            min_chars=int(target * 0.93), max_chars=int(target * 1.07), cta=cta_instruction(sc), tone=sc.tone, topic=topic.title, angles=" / ".join(topic.angle_ideas or []),
             research=research_brief(topic.research or {}), feedback=feedback)
         data, _ = ctx.llm.complete_json(prompt, schema=SCRIPT_SCHEMA)
         script = normalize_script(data, topic.key, sc.chars_per_second, allowed)

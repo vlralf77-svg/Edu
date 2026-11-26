@@ -323,3 +323,27 @@ def title_overlay(text: str, size: tuple[int, int], out: Path, font_path: str = 
         d.rounded_rectangle(((w - tw) / 2 - pad, y - 20, (w + tw) / 2 + pad, y + 130), 28, fill=(0, 0, 0, 150))
         d.text(((w - tw) / 2, y), text, font=f, fill=(255, 225, 60), stroke_width=3, stroke_fill=(0, 0, 0))
     img.save(out)
+
+
+def cta_overlay(overlay_path: Path, style: str, font_path: str = "") -> None:
+    """마지막 장면 오버레이(상단 타이틀 PNG)에 [▶ 구독] [♥ 좋아요] 버튼 그래픽(또는 인사)을 합성."""
+    img = Image.open(overlay_path).convert("RGBA")
+    w, h = img.size
+    d = ImageDraw.Draw(img)
+    f = font(76, font_path)
+    y = int(h * 0.60)
+    if style == "direct":
+        buttons = [("▶ 구독", (230, 33, 23), (255, 255, 255)), ("♥ 좋아요", (255, 255, 255), (30, 30, 30))]
+        widths = [d.textlength(t, font=f) + 90 for t, _, _ in buttons]
+        x = (w - sum(widths) - 40) / 2
+        for (t, bg, fg), bw in zip(buttons, widths):
+            d.rounded_rectangle((x + 6, y + 8, x + bw + 6, y + 128), 60, fill=(0, 0, 0, 90))  # 그림자
+            d.rounded_rectangle((x, y, x + bw, y + 120), 60, fill=bg + (245,))
+            d.text((x + 45, y + 16), t, font=f, fill=fg)
+            x += bw + 40
+    else:  # soft: 다정한 인사
+        t = "또 만나요! 👋".replace("👋", "~")
+        tw = d.textlength(t, font=f)
+        d.rounded_rectangle(((w - tw) / 2 - 50, y, (w + tw) / 2 + 50, y + 120), 60, fill=(255, 196, 0, 240))
+        d.text(((w - tw) / 2, y + 16), t, font=f, fill=(40, 30, 0))
+    img.save(overlay_path)

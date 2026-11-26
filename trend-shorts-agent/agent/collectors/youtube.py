@@ -70,12 +70,14 @@ class YouTubeClient:
         return self.call("videos.list", params).get("items", [])
 
     def search_ids(self, published_after: datetime, region: str, lang: str, query: str | None = None,
-                   category_id: int | None = None, max_results: int = 50) -> list[str]:
+                   category_id: int | None = None, max_results: int = 50, safe_search: str = "") -> list[str]:
         params = {"part": "id", "type": "video", "order": "viewCount", "regionCode": region,
                   "relevanceLanguage": lang, "maxResults": min(max_results, 50),
                   "publishedAfter": published_after.strftime("%Y-%m-%dT%H:%M:%SZ")}
         if query:
             params["q"] = query
+        if safe_search:
+            params["safeSearch"] = safe_search
         if category_id:
             params["videoCategoryId"] = category_id
         items = self.call("search.list", params).get("items", [])
@@ -167,13 +169,17 @@ def collect(ctx, client: YouTubeClient | None = None, now: datetime | None = Non
     try:
         # 1순위: mostPopular 차트 (1유닛)
         for cat in (cfg.category_ids or [None]):
-            raw += yt.most_popular(cfg.region_code, cat)
+            try:
+                raw += yt.most_popular(cfg.region_code, cat)
+            except httpx.HTTPStatusError as e:  # 지역에 인기 차트가 없는 카테고리 등
+                log.warning("인기 차트(카테고리 %s) 조회 실패: %s", cat, e.response.status_code)
         # 보조: search.list (100유닛) → videos.list 로 상세 조회
         after = now - timedelta(hours=cfg.published_within_hours)
         ids: list[str] = []
-        for cat in (cfg.category_ids or [None]):
+        for cat in ((cfg.category_ids if cfg.search_with_categories else []) or [None]):
             for q in (cfg.search_queries or [None]):
-                ids += yt.search_ids(after, cfg.region_code, cfg.relevance_language, q, cat)
+                ids += yt.search_ids(after, cfg.region_code, cfg.relevance_language, q, cat,
+                                     safe_search=cfg.safe_search)
         known = {it["id"] for it in raw if isinstance(it.get("id"), str)}
         raw += yt.videos([i for i in ids if i not in known])
     except QuotaExceeded as e:

@@ -81,7 +81,8 @@ if page == PAGES[0]:
     d = today(settings)
     from agent.pipeline import today_runs
     runs_today = today_runs(session, d)
-    run = runs_today[0] if runs_today else None
+    general_runs = [r for r in runs_today if "kids" not in r.date]
+    run = general_runs[0] if general_runs else None
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("오늘 날짜", d, help=f"오늘 실행 {len(runs_today)}회" if runs_today else None)
     STATUS_KO = {"started": "진행 중", "collected": "수집 완료", "clustered": "주제 정리 완료", "researched": "조사 완료",
@@ -105,12 +106,17 @@ if page == PAGES[0]:
     elif b1.button("① 오늘 트렌드 분석 " + ("이어서 하기" if run else "시작"), type="primary",
                    use_container_width=True, help="YouTube 인기 영상 수집 → 주제 묶기 → 웹 조사 → 대본 작성 → 팩트체크"):
         start_job("run-daily", ["run-daily"] + (["--run", run.date] if run else []))
-    b2.markdown("② **✅ 후보 검토** 메뉴에서 승인")
+    if b2.button("🧒 어린이용 영상 만들기", use_container_width=True,
+                 help="동물·과학·공룡·우주 등 어린이에게 좋은 인기 영상만 모아 쉬운 말로 대본을 씁니다 (아동용으로 표시)"):
+        start_job("run-daily", ["run-daily", "--kids"])
+    st.caption("② 분석이 끝나면 **✅ 후보 검토** 메뉴에서 승인 → ③ 제작")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
-    summary = settings.data_dir / "runs" / (run.date if run else d) / "summary.txt"
-    if summary.exists():
-        st.info(f"**오늘 분석 결과** ({run.date if run else d})\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
+    for r in runs_today[:3]:
+        summary = settings.data_dir / "runs" / r.date / "summary.txt"
+        if summary.exists():
+            label = "🧒 어린이용" if "kids" in r.date else "일반"
+            st.info(f"**{label} 분석 결과** ({r.date})\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
     if run:
         with st.expander("결과가 이상하면: 오늘 분석을 처음부터 다시"):
             st.write("수집부터 전부 다시 합니다 (YouTube 쿼터 약 300 사용, Gemini 무료).")
@@ -285,6 +291,13 @@ elif page == PAGES[3]:
             rprov = st.selectbox("웹 조사 방식", list(RP), index=list(RP).index(s.research.provider)
                                  if s.research.provider in RP else 0, format_func=RP.get)
             notify_on = st.toggle("Slack/Telegram 알림 보내기", s.notify.enabled)
+            CTA = {"direct": "구독·좋아요 요청 + 버튼 그래픽", "soft": "다정한 마무리 인사만", "none": "없음"}
+            cta = st.selectbox("일반 영상 마무리", list(CTA), index=list(CTA).index(s.script.cta_style)
+                               if s.script.cta_style in CTA else 0, format_func=CTA.get)
+            cta_text = st.text_input("구독 요청 문장", s.script.cta_text)
+            kcta = st.selectbox("🧒 어린이 영상 마무리 (아이에게 구독을 조르는 표현은 YouTube 어린이 콘텐츠 품질 기준상 불이익 가능)",
+                                list(CTA), index=list(CTA).index(s.kids.cta_style) if s.kids.cta_style in CTA else 1,
+                                format_func=CTA.get)
         if st.form_submit_button("설정 저장", type="primary"):
             save_local_settings({
                 "topics": {"max_topics_per_day": topics}, "budget": {"max_daily_cost_usd": float(cost)},
@@ -295,6 +308,8 @@ elif page == PAGES[3]:
                 "collect": {"category_ids": cats, "exclude_keywords": [x.strip() for x in excl.split(",") if x.strip()]},
                 "notify": {"enabled": notify_on},
                 "research": {"provider": rprov},
+                "script": {"cta_style": cta, "cta_text": cta_text.strip() or s.script.cta_text},
+                "kids": {"cta_style": kcta},
             })
             st.success("저장했습니다. (실행 시각을 바꿨다면 ⏰ 자동 실행에서 다시 등록하세요)")
             st.rerun()

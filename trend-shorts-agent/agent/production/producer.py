@@ -19,7 +19,7 @@ from .bgm.mood import analyze_mood
 from .fonts import find_font, family_name
 from .subtitles import build_cues, write_ass, write_srt
 from .tts.base import TTSResult, Word, get_provider, to_wav, wav_duration
-from .visuals import VisualFetcher, title_overlay
+from .visuals import VisualFetcher, cta_overlay, title_overlay
 
 log = logging.getLogger(__name__)
 SCENE_GAP = 0.25   # 장면 사이 숨 고르기
@@ -122,6 +122,10 @@ def make_bgm(ctx, script: dict, duration: float, out_dir: Path) -> tuple[Path | 
         log.warning("LLM 사용 불가(%s) → mood 휴리스틱", e)
         llm = None
     mood = analyze_mood(llm, script)
+    if ctx.settings.profile == "kids" and mood["mood"] not in ctx.settings.kids.allowed_moods:
+        from .bgm.mood import clamp
+        mood = clamp({**mood, "mood": "calm" if mood["mood"] in ("sad", "news") else "funny",
+                      "reason": f"어린이용 — '{mood['mood']}' 대신 밝은 분위기"})
     (out_dir / "mood.json").write_text(json.dumps(mood, ensure_ascii=False, indent=2), encoding="utf-8")
     if mood["mood"] == "sad" and b.sad_disable:
         return None, {"type": "none", "reason": "sad 주제 — 설정에 따라 BGM 없음", "mood": mood}
@@ -148,8 +152,13 @@ def make_bgm(ctx, script: dict, duration: float, out_dir: Path) -> tuple[Path | 
     return path, meta
 
 
-def build_description(script: dict, visuals: list[dict], bgm_meta: dict) -> str:
+def build_description(script: dict, visuals: list[dict], bgm_meta: dict, cta_style: str = "direct",
+                      kids: bool = False) -> str:
     lines = [script.get("title", ""), ""]
+    if cta_style == "direct":
+        lines += ["👍 영상이 도움이 됐다면 좋아요와 구독, 🔔 알림 설정 부탁드려요!", ""]
+    if kids:
+        lines += ["👨‍👩‍👧 보호자와 함께 시청해 주세요.", ""]
     lines += ["📚 출처"] + [f"- {u}" for u in script.get("sources", [])]
     credits = []
     for v in visuals:
@@ -179,7 +188,9 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
     out_dir = ctx.run_dir / "production" / f"script_{script_row.id}"
     work = out_dir / "work"
     work.mkdir(parents=True, exist_ok=True)
-    script = script_row.json
+    import copy
+    from ..writing.script_writer import ensure_cta
+    script = ensure_cta(copy.deepcopy(script_row.json), s.script)  # 수정본 등에서 빠졌어도 마무리 문장 보장
     scenes = script["scenes"]
     try:
         # 1) TTS
@@ -197,6 +208,8 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
             # 타이포그래피 카드는 화면 텍스트를 이미 크게 보여주므로 상단 타이틀 생략
             title_overlay("" if vis.get("kind") == "card" else sc.get("on_screen_text", ""), size, ov,
                           p.font_path)
+            if sc is scenes[-1] and s.script.cta_style != "none":  # 마지막 장면: 구독·좋아요(또는 인사) 그래픽
+                cta_overlay(ov, s.script.cta_style, p.font_path)
             clip = work / f"clip_{sc['idx']:02d}.mp4"
             composer.render_scene(Path(vis["path"]), ov, dur, clip, sc["idx"], size, p.fps, kind=vis["kind"])
             clips.append(clip)
@@ -226,14 +239,14 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
         # 6) 메타
         meta = {
             "title": script.get("title", ""),
-            "description": build_description(script, visuals, bgm_meta),
+            "description": build_description(script, visuals, bgm_meta, s.script.cta_style, s.profile == "kids"),
             "hashtags": script.get("hashtags", []),
             "sources": script.get("sources", []),
             "visuals": visuals,
             "bgm": bgm_meta,
             "mix": mix_info,
             "synthetic_media": True,   # YouTube '변경되거나 합성된 콘텐츠' 공개
-            "made_for_kids": False,
+            "made_for_kids": s.profile == "kids",   # 어린이용: YouTube '아동용' 표시 (COPPA)
             "script_id": script_row.id,
         }
         (out_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

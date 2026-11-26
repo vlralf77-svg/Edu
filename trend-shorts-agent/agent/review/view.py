@@ -19,14 +19,14 @@ def render_review(settings, box=None) -> None:
         st.info("아직 실행 기록이 없습니다. 홈에서 [오늘 트렌드 분석 시작] 을 눌러 주세요.")
         return
 
-    run_date = box.selectbox("실행 날짜", dates)
+    run_date = box.selectbox("실행 날짜", dates, format_func=lambda d: f"🧒 {d}" if "kids" in d else d)
     run = session.scalar(select(Run).where(Run.date == run_date))
     box.metric("이 run 비용", f"${run.cost_usd:.2f}")
     box.metric("YouTube 쿼터", f"{run.quota_used:,}")
     status_filter = box.multiselect("상태", ["pending_review", "approved", "rejected", "on_hold"],
                                            default=["pending_review", "on_hold"])
 
-    st.header(f"✅ 숏폼 후보 검토 — {run_date}")
+    st.header(f"✅ 숏폼 후보 검토 — {run_date}" + (" 🧒 어린이용" if "kids" in run_date else ""))
     items = [(t, s) for t, s in candidates(session, run_date) if s.approval_status in status_filter]
     if not items:
         st.write("해당 상태의 후보가 없습니다.")

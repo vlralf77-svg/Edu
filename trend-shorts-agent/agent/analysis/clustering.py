@@ -131,7 +131,7 @@ def cluster(ctx, videos: list[dict] | None = None) -> list[dict]:
         ctx.write_json("topics.json", [])
         ctx.set_status("clustered")
         return []
-    prompt = load_prompt("cluster_topics", hours=s.collect.published_within_hours,
+    prompt = load_prompt("cluster_topics_kids" if s.profile == "kids" else "cluster_topics", hours=s.collect.published_within_hours,
                          videos="\n".join(_video_line(v) for v in videos))
     data, _ = ctx.llm.complete_json(prompt, schema=CLUSTER_SCHEMA)
     topics, excluded = parse_clusters(data, videos, s.topics.min_videos_per_topic)

@@ -85,7 +85,8 @@ def test_analysis_pipeline_end_to_end(settings, yt_transport):
         checked = [s for s in rows if s.approval_status == "pending_review"]
         assert len(checked) == 2
         for s in checked:
-            assert 270 <= s.char_count <= 330 and s.est_seconds <= 60
+            assert 270 <= s.char_count <= 340 and s.est_seconds <= 60 * 1.15
+            assert "구독" in s.json["scenes"][-1]["narration"]   # 마무리 구독·좋아요
             assert len(s.json["title"]) <= 40
             assert s.json["hashtags"] == ["#AI", "#폰"]
             assert s.json["sources"] == ["https://news.example.com/a"]  # 조사에 없는 URL 제거

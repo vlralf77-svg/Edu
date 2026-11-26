@@ -22,8 +22,10 @@ def today(settings: Settings) -> str:
 
 class RunContext:
     def __init__(self, run_date: str | None = None, settings: Settings | None = None, llm: Any | None = None):
-        self.settings = settings or get_settings()
-        self.run_date = run_date or today(self.settings)
+        from .config import apply_profile, profile_of
+        base = settings or get_settings()
+        self.run_date = run_date or today(base)
+        self.settings = apply_profile(base, profile_of(self.run_date))  # '...-kids' 실행은 어린이용 설정
         self.session = session_scope(self.settings.db_url)
         self.run = self.session.scalar(select(Run).where(Run.date == self.run_date))
         if self.run is None:

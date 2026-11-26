@@ -33,6 +33,8 @@ class CollectCfg(BaseModel):
     search_queries: list[str] = Field(default_factory=list)
     exclude_keywords: list[str] = Field(default_factory=list)
     dedupe_days: int = 7
+    safe_search: str = ""               # strict: 어린이용 수집
+    search_with_categories: bool = True # False 면 search.list 를 카테고리별로 곱하지 않음 (쿼터 절약)
     daily_quota: int = 10_000
     quota_stop_ratio: float = 0.8
 
@@ -77,6 +79,10 @@ class ScriptCfg(BaseModel):
     max_rewrites: int = 2
     tone: str = "친근하고 빠른 뉴스 브리핑"
     structure: list[str] = Field(default_factory=lambda: ["hook", "context", "key_points", "closing"])
+    # 마지막 장면 행동 유도 (구독·좋아요). style: direct(구독·좋아요 요청) | soft(인사만) | none
+    cta_style: str = "direct"
+    cta_text: str = "도움이 됐다면 좋아요와 구독 부탁드려요!"
+    cta_soft_text: str = "오늘 이야기 재미있었나요? 다음에 또 신기한 이야기로 만나요!"
 
 
 class ProductionCfg(BaseModel):
@@ -132,7 +138,27 @@ class PathsCfg(BaseModel):
     db_url: str = ""
 
 
+class KidsCfg(BaseModel):
+    """🧒 어린이용 영상 실행에 덮어쓸 값 (실행 이름에 'kids' 가 들어가면 적용)."""
+    category_ids: list[int] = Field(default_factory=lambda: [15, 27, 28, 1])  # 동물·교육·과학기술·애니메이션
+    search_queries: list[str] = Field(default_factory=lambda: [
+        "어린이 과학", "신기한 동물", "공룡", "우주 이야기", "과학 실험"])
+    min_view_count: int = 10_000
+    published_within_hours: int = 168
+    exclude_keywords: list[str] = Field(default_factory=lambda: [
+        "사고", "사망", "살인", "폭행", "범죄", "전쟁", "공포", "귀신", "괴담", "성인", "도박", "술", "담배",
+        "다이어트", "연애", "논란", "정치", "선거", "주식", "코인"])
+    target_chars_ko: int = 240
+    chars_per_second: float = 4.6
+    tone: str = "5~10살 어린이에게 말하듯 다정하고 신나는 말투"
+    cta_style: str = "soft"            # soft(기본) | direct | none — 어린이 대상 구독 유도는 YouTube 품질 기준상 주의
+    edge_voice: str = "ko-KR-SunHiNeural"
+    allowed_moods: list[str] = Field(default_factory=lambda: ["funny", "calm", "upbeat", "inspiring", "tech"])
+
+
 class Settings(BaseModel):
+    profile: str = "general"   # general | kids (실행마다 자동 결정)
+    kids: KidsCfg = KidsCfg()
     schedule: ScheduleCfg = ScheduleCfg()
     collect: CollectCfg = CollectCfg()
     llm: LLMCfg = LLMCfg()
@@ -252,3 +278,29 @@ def save_env(updates: dict[str, str], path: Path | None = None) -> Path:
         os.environ[k] = v
     get_settings.cache_clear()
     return path
+
+
+def apply_profile(settings: Settings, profile: str) -> Settings:
+    """어린이용 실행이면 수집·대본·음성 설정을 어린이용으로 바꾼 복사본."""
+    if profile != "kids":
+        return settings
+    s = settings.model_copy(deep=True)
+    k = s.kids
+    s.profile = "kids"
+    s.collect.category_ids = list(k.category_ids)
+    s.collect.search_queries = list(k.search_queries)
+    s.collect.min_view_count = k.min_view_count
+    s.collect.published_within_hours = k.published_within_hours
+    s.collect.exclude_keywords = list(dict.fromkeys(s.collect.exclude_keywords + k.exclude_keywords))
+    s.collect.safe_search = "strict"
+    s.collect.search_with_categories = False
+    s.script.target_chars_ko = k.target_chars_ko
+    s.script.chars_per_second = k.chars_per_second
+    s.script.tone = k.tone
+    s.script.cta_style = k.cta_style
+    s.production.edge_voice = k.edge_voice
+    return s
+
+
+def profile_of(run_name: str) -> str:
+    return "kids" if "kids" in (run_name or "") else "general"

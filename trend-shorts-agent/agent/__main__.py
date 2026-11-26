@@ -32,11 +32,12 @@ def _ctx(run: Optional[str]):
 
 @app.command("run-daily")
 def run_daily(run: Optional[str] = RunOpt, force: bool = ForceOpt,
-              new: bool = typer.Option(False, "--new", help="같은 날 새로 한 번 더 (새 트렌드 수집, 앞에서 쓴 영상 제외)")):
+              new: bool = typer.Option(False, "--new", help="같은 날 새로 한 번 더 (새 트렌드 수집, 앞에서 쓴 영상 제외)"),
+              kids: bool = typer.Option(False, "--kids", help="🧒 어린이용 (어린이에게 맞는 영상만 수집·대본)")):
     """1~6단계 전체 (수집→클러스터→조사→대본→팩트체크→후보 리스트). 제작은 승인 대기."""
     from .pipeline import next_batch, run_daily as _run
-    if new:
-        run = next_batch(get_settings())
+    if new or kids:
+        run = next_batch(get_settings(), kids=kids)
         typer.echo(f"새 실행: {run}")
     d = _run(run, force)
     summary = get_settings().data_dir / "runs" / d / "summary.txt"

@@ -69,10 +69,13 @@ def check_script(ctx, topic: Topic, script: dict) -> tuple[dict, list[dict]]:
         checked["scenes"] = data["scenes"]
     allowed = {s["url"] for s in (topic.research or {}).get("sources", [])}
     checked = normalize_script(checked, topic.key, sc.chars_per_second, allowed)
+    from .script_writer import ensure_cta
+    checked = normalize_script(ensure_cta(checked, sc), topic.key, sc.chars_per_second, allowed)
     flags = list(data.get("flags", [])) + rule_flags(" ".join(s["narration"] for s in checked["scenes"]))
     if topic.confidence == "low":
         flags.append({"type": "low_confidence", "sentence": "", "note": "출처 2개 미만 또는 출처 간 모순"})
-    if checked["estimated_seconds"] > sc.max_seconds:
+    # 제작 단계에서 말속도를 max_tts_speed 배까지 자동으로 올리므로 그걸로도 안 될 때만 경고
+    if checked["estimated_seconds"] > sc.max_seconds * ctx.settings.production.max_tts_speed:
         flags.append({"type": "length", "sentence": "", "note": f"예상 {checked['estimated_seconds']}초"})
     checked["fact_check"] = {"removed_sentences": data.get("removed_sentences", []), "flags": flags,
                              "notes": data.get("notes", "")}
