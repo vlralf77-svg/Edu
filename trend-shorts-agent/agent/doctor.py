@@ -34,7 +34,9 @@ def run_checks(settings: Settings) -> list[Check]:
     win, mac = sys.platform.startswith("win"), sys.platform == "darwin"
     ff_fix = ("🩺 점검 화면의 [FFmpeg 자동 설치] 버튼을 누르세요" if win
               else "brew install ffmpeg" if mac else "sudo apt install ffmpeg")
+    from . import __version__
     checks = [
+        Check("프로그램 버전", True, __version__),
         Check("Python 3.11 이상", sys.version_info >= (3, 11), sys.version.split()[0]),
         Check("FFmpeg (영상 합성)", bool(find_tool("ffmpeg")), find_tool("ffmpeg") or "없음", ff_fix),
         Check("FFprobe (결과 검증)", bool(find_tool("ffprobe")), find_tool("ffprobe") or "없음", ff_fix),

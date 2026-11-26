@@ -182,6 +182,8 @@ def produce(script_id: int, settings=None, tts=None, stock_search=None, force: b
     ctx = _ctx_for_script(script, st)
     try:
         row = ctx.session.get(Script, script_id)
+        from . import __version__
+        log.info("프로그램 버전 %s", __version__)
         with timed(f"produce script {script_id}"):
             return produce_script(ctx, row, tts=tts, stock_search=stock_search)
     finally:

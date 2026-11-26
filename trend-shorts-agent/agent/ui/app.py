@@ -147,7 +147,8 @@ elif page == PAGES[2]:
                         st.text_area("설명란 (출처·크레딧 포함)", m.get("description", ""), height=220, key=f"d{prod.id}")
                     st.caption(f"길이 {prod.duration:.0f}초 · YouTube 업로드 시 '변경되거나 합성된 콘텐츠'를 '예'로 설정하세요")
             elif prod.status == "failed":
-                st.error(prod.error)
+                st.error("제작 실패 — 아래 내용을 그대로 복사해 문의하세요")
+                st.code(prod.error or "", language="text")
 
 # ================================================================ 설정
 elif page == PAGES[3]:
@@ -295,4 +296,6 @@ elif page == PAGES[5]:
         start_job("collect", ["collect"])
     job_panel()
 
+from agent import __version__  # noqa: E402
+st.sidebar.caption(f"버전 {__version__}")
 st.sidebar.caption(f"데이터 폴더: {settings.data_dir}")

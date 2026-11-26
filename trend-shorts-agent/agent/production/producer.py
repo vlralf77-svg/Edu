@@ -26,6 +26,25 @@ SCENE_GAP = 0.25   # 장면 사이 숨 고르기
 TAIL = 0.6         # 마지막 장면 뒤 여운
 
 
+def describe_error(e: BaseException) -> str:
+    """사람이 원인을 알 수 있게: 못 찾은 파일·프로그램 이름과 어느 코드에서 났는지."""
+    import traceback
+    msg = f"{type(e).__name__}: {e}"
+    if isinstance(e, FileNotFoundError):
+        target = e.filename or ""
+        if not target and isinstance(e.args, tuple):
+            target = next((str(a) for a in e.args if isinstance(a, str) and ("\\" in a or "/" in a)), "")
+        msg += f"\n못 찾은 대상: {target or '(알 수 없음)'}"
+        frames = [f for f in traceback.extract_tb(e.__traceback__) if "agent" in f.filename]
+        if frames:
+            f = frames[-1]
+            msg += f"\n발생 위치: {f.filename.split('agent')[-1]}:{f.lineno} — {f.line}"
+        if "subprocess" in "".join(traceback.format_tb(e.__traceback__)):
+            msg += "\n→ 외부 프로그램 실행 실패입니다. 🩺 점검 화면에서 FFmpeg 상태를 확인하세요."
+    from .. import __version__
+    return msg + f"\n(프로그램 버전 {__version__})"
+
+
 class ScriptTooLong(RuntimeError):
     pass
 
@@ -230,7 +249,7 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
     except Exception as e:
         from ..costs import BudgetExceeded
         log.exception("제작 실패: script %d", script_row.id)
-        prod.status, prod.error = "failed", f"{type(e).__name__}: {e}"
+        prod.status, prod.error = "failed", describe_error(e)
         ctx.save()
         if isinstance(e, BudgetExceeded):
             raise

@@ -36,3 +36,13 @@ def test_windows_auto_installs_when_missing(tmp_path, monkeypatch):
     assert sorted(p.name for p in out.iterdir()) == ["ffmpeg.exe", "ffprobe.exe"]
     assert (tmp_path / "ffprobe.exe").read_bytes() == b"FP"
     tools.find_tool.cache_clear()
+
+
+def test_describe_error_names_missing_program():
+    import subprocess
+    from agent.production.producer import describe_error
+    try:
+        subprocess.run(["no-such-program-xyz", "-v"])
+    except FileNotFoundError as e:
+        msg = describe_error(e)
+    assert "no-such-program-xyz" in msg and "외부 프로그램" in msg and "버전" in msg
