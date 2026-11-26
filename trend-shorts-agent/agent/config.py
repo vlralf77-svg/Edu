@@ -34,6 +34,7 @@ class CollectCfg(BaseModel):
     exclude_keywords: list[str] = Field(default_factory=list)
     dedupe_days: int = 7
     safe_search: str = ""               # strict: 어린이용 수집
+    include_keywords: list[str] = Field(default_factory=list)  # 비어 있지 않으면 이 단어가 하나라도 있는 영상만
     search_with_categories: bool = True # False 면 search.list 를 카테고리별로 곱하지 않음 (쿼터 절약)
     daily_quota: int = 10_000
     quota_stop_ratio: float = 0.8
@@ -156,9 +157,27 @@ class KidsCfg(BaseModel):
     allowed_moods: list[str] = Field(default_factory=lambda: ["funny", "calm", "upbeat", "inspiring", "tech"])
 
 
+class SoccerCfg(BaseModel):
+    """⚽ 축구 영상 실행에 덮어쓸 값 (실행 이름에 'soccer' 가 들어가면 적용)."""
+    category_ids: list[int] = Field(default_factory=lambda: [17])  # 스포츠
+    search_queries: list[str] = Field(default_factory=lambda: [
+        "축구", "손흥민", "K리그", "프리미어리그", "챔피언스리그", "축구 국가대표"])
+    include_keywords: list[str] = Field(default_factory=lambda: [
+        "축구", "K리그", "득점", "골키퍼", "손흥민", "이강인", "김민재", "황희찬", "국대", "국가대표", "월드컵", "EPL", "프리미어",
+        "챔스", "챔피언스", "라리가", "분데스", "세리에", "해트트릭", "이적", "토트넘", "맨시티", "맨유", "리버풀",
+        "아스널", "첼시", "레알", "바르셀로나", "바르사", "PSG", "뮌헨", "soccer", "football", "FIFA", "AFC"])
+    exclude_keywords: list[str] = Field(default_factory=lambda: ["토토", "배팅", "베팅", "사설", "먹튀", "중계 링크", "무료 중계"])
+    min_view_count: int = 30_000
+    published_within_hours: int = 48
+    tone: str = "열정적인 스포츠 캐스터처럼 빠르고 생생한 말투"
+    allowed_moods: list[str] = Field(default_factory=lambda: ["upbeat", "inspiring", "tense", "tech"])
+    youtube_category: str = "17"
+
+
 class Settings(BaseModel):
-    profile: str = "general"   # general | kids (실행마다 자동 결정)
+    profile: str = "general"   # general | kids | soccer (실행마다 자동 결정)
     kids: KidsCfg = KidsCfg()
+    soccer: SoccerCfg = SoccerCfg()
     schedule: ScheduleCfg = ScheduleCfg()
     collect: CollectCfg = CollectCfg()
     llm: LLMCfg = LLMCfg()
@@ -281,7 +300,20 @@ def save_env(updates: dict[str, str], path: Path | None = None) -> Path:
 
 
 def apply_profile(settings: Settings, profile: str) -> Settings:
-    """어린이용 실행이면 수집·대본·음성 설정을 어린이용으로 바꾼 복사본."""
+    """어린이용·축구 실행이면 수집·대본·음성 설정을 그 분야용으로 바꾼 복사본."""
+    if profile == "soccer":
+        s = settings.model_copy(deep=True)
+        c = s.soccer
+        s.profile = "soccer"
+        s.collect.category_ids = list(c.category_ids)
+        s.collect.search_queries = list(c.search_queries)
+        s.collect.include_keywords = list(c.include_keywords)
+        s.collect.exclude_keywords = list(dict.fromkeys(s.collect.exclude_keywords + c.exclude_keywords))
+        s.collect.min_view_count = c.min_view_count
+        s.collect.published_within_hours = c.published_within_hours
+        s.collect.search_with_categories = False
+        s.script.tone = c.tone
+        return s
     if profile != "kids":
         return settings
     s = settings.model_copy(deep=True)
@@ -302,5 +334,22 @@ def apply_profile(settings: Settings, profile: str) -> Settings:
     return s
 
 
+PROFILES = {"general": ("", "일반"), "kids": ("🧒", "어린이용"), "soccer": ("⚽", "축구")}
+
+
 def profile_of(run_name: str) -> str:
-    return "kids" if "kids" in (run_name or "") else "general"
+    n = run_name or ""
+    return "kids" if "kids" in n else "soccer" if "soccer" in n else "general"
+
+
+def profile_label(run_name: str) -> str:
+    icon, name = PROFILES[profile_of(run_name)]
+    return f"{icon} {name}".strip()
+
+
+def allowed_moods(settings: Settings) -> list[str] | None:
+    return {"kids": settings.kids.allowed_moods, "soccer": settings.soccer.allowed_moods}.get(settings.profile)
+
+
+def youtube_category(settings: Settings) -> str:
+    return {"kids": "27", "soccer": settings.soccer.youtube_category}.get(settings.profile, "25")

@@ -136,3 +136,66 @@ def test_kids_production_marks_made_for_kids(settings, monkeypatch):
                       .read_text(encoding="utf-8"))
     assert meta["made_for_kids"] is True and "보호자" in meta["description"] and "구독" not in meta["description"]
     assert meta["bgm"]["mood_analysis"]["mood"] in settings.kids.allowed_moods
+
+
+# ---------------------------------------------------------------- ⚽ 축구
+def test_soccer_profile_and_batch(settings):
+    from agent.config import allowed_moods, profile_label, youtube_category
+    assert profile_of("2026-11-26-soccer-2") == "soccer" and profile_label("2026-11-26-soccer") == "⚽ 축구"
+    s = apply_profile(settings, "soccer")
+    assert s.collect.category_ids == [17] and "손흥민" in s.collect.include_keywords and "토토" in s.collect.exclude_keywords
+    assert youtube_category(s) == "17" and "upbeat" in allowed_moods(s) and s.script.cta_style == "direct"
+    d = today(settings)
+    assert next_batch(settings, profile="soccer") == f"{d}-soccer"
+
+
+def test_soccer_collect_keeps_only_soccer(settings):
+    items = [yt_item(1, 90_000, 5, title="손흥민 시즌 10호골 폭발"),
+             yt_item(2, 90_000, 5, title="KBO 리그 끝내기 홈런"),            # 야구 → 제외
+             yt_item(3, 90_000, 5, title="골프 대회 우승 장면"),               # 골프 → 제외
+             yt_item(4, 90_000, 5, title="토토 배당 분석 축구"),               # 도박 → 제외
+             yt_item(5, 90_000, 5, title="Champions League 하이라이트", tags=["soccer"])]
+
+    def handler(req):
+        p = dict(req.url.params)
+        if p.get("chart") == "mostPopular":
+            assert p.get("videoCategoryId") == "17"
+            return httpx.Response(200, json={"items": items})
+        return httpx.Response(200, json={"items": []})
+    with RunContext("2026-11-25-soccer", settings) as ctx:
+        yt = YouTubeClient("k", QuotaManager(10000, .8), http=httpx.Client(transport=httpx.MockTransport(handler)))
+        ids = sorted(v["video_id"] for v in collect(ctx, yt, now=NOW))
+    assert ids == ["v1", "v5"]
+
+
+def test_soccer_uses_soccer_prompts(settings, yt_transport):
+    from .test_phase3_analysis import _collect
+
+    class Spy(FakeLLM):
+        def __init__(self):
+            super().__init__()
+            self.prompts = []
+
+        def complete_json(self, prompt, **kw):
+            self.prompts.append(prompt)
+            if "축구 이슈" in prompt:
+                prompt = prompt + "\n같은 이슈"
+            if "축구 숏폼 채널의 작가" in prompt:
+                prompt = prompt + "\n숏폼 영상 작가"
+            return super().complete_json(prompt, **kw)
+
+    llm = Spy()
+    with RunContext("2026-11-25-soccer", settings, llm=llm) as ctx:
+        ctx.settings.collect.include_keywords = []
+        ctx.settings.collect.min_view_count = 1
+        _collect(ctx, yt_transport)
+        step_cluster(ctx)
+        step_research(ctx)
+        step_write(ctx)
+    assert any("축구 이슈" in p for p in llm.prompts)
+    assert any("축구 숏폼 채널의 작가" in p and "토토" in p for p in llm.prompts)
+    assert any("좋아요와 구독" in p for p in llm.prompts)
+
+
+def test_upload_body_uses_profile_category():
+    assert build_body({"title": "t", "category_id": "17"})["snippet"]["categoryId"] == "17"

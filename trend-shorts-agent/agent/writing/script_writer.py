@@ -119,7 +119,8 @@ def write_for_topic(ctx, topic: Topic) -> dict:
     script: dict = {}
     for attempt in range(sc.max_rewrites + 1):
         prompt = load_prompt(
-            "write_script_kids" if ctx.settings.profile == "kids" else "write_script", max_seconds=sc.max_seconds,
+            "write_script" if ctx.settings.profile == "general" else f"write_script_{ctx.settings.profile}",
+            max_seconds=sc.max_seconds,
             min_chars=int(target * 0.93), max_chars=int(target * 1.07), cta=cta_instruction(sc), tone=sc.tone, topic=topic.title, angles=" / ".join(topic.angle_ideas or []),
             research=research_brief(topic.research or {}), feedback=feedback)
         data, _ = ctx.llm.complete_json(prompt, schema=SCRIPT_SCHEMA)

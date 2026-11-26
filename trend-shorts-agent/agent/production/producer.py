@@ -19,6 +19,7 @@ from .bgm.mood import analyze_mood
 from .fonts import find_font, family_name
 from .subtitles import build_cues, write_ass, write_srt
 from .tts.base import TTSResult, Word, get_provider, to_wav, wav_duration
+from ..config import youtube_category
 from .visuals import VisualFetcher, cta_overlay, title_overlay
 
 log = logging.getLogger(__name__)
@@ -122,10 +123,12 @@ def make_bgm(ctx, script: dict, duration: float, out_dir: Path) -> tuple[Path | 
         log.warning("LLM 사용 불가(%s) → mood 휴리스틱", e)
         llm = None
     mood = analyze_mood(llm, script)
-    if ctx.settings.profile == "kids" and mood["mood"] not in ctx.settings.kids.allowed_moods:
+    from ..config import allowed_moods
+    allowed = allowed_moods(ctx.settings)
+    if allowed and mood["mood"] not in allowed:
         from .bgm.mood import clamp
-        mood = clamp({**mood, "mood": "calm" if mood["mood"] in ("sad", "news") else "funny",
-                      "reason": f"어린이용 — '{mood['mood']}' 대신 밝은 분위기"})
+        alt = ("calm" if mood["mood"] in ("sad", "news") else "funny") if ctx.settings.profile == "kids" else allowed[0]
+        mood = clamp({**mood, "mood": alt, "reason": f"{ctx.settings.profile} — '{mood['mood']}' 대신 {alt}"})
     (out_dir / "mood.json").write_text(json.dumps(mood, ensure_ascii=False, indent=2), encoding="utf-8")
     if mood["mood"] == "sad" and b.sad_disable:
         return None, {"type": "none", "reason": "sad 주제 — 설정에 따라 BGM 없음", "mood": mood}
@@ -247,6 +250,8 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
             "mix": mix_info,
             "synthetic_media": True,   # YouTube '변경되거나 합성된 콘텐츠' 공개
             "made_for_kids": s.profile == "kids",   # 어린이용: YouTube '아동용' 표시 (COPPA)
+            "category_id": youtube_category(s),
+            "profile": s.profile,
             "script_id": script_row.id,
         }
         (out_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

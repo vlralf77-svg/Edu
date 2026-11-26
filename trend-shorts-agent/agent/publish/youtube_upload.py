@@ -47,7 +47,7 @@ def build_body(meta: dict, privacy: str = "private") -> dict:
         title += " #shorts"
     return {
         "snippet": {"title": title, "description": meta.get("description", "")[:4900], "tags": tags,
-                    "categoryId": "27" if meta.get("made_for_kids") else "25", "defaultLanguage": "ko", "defaultAudioLanguage": "ko"},
+                    "categoryId": meta.get("category_id") or ("27" if meta.get("made_for_kids") else "25"), "defaultLanguage": "ko", "defaultAudioLanguage": "ko"},
         "status": {
             "privacyStatus": privacy,
             "selfDeclaredMadeForKids": bool(meta.get("made_for_kids", False)),

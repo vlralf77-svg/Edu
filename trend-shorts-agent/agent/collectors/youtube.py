@@ -143,6 +143,8 @@ def filter_videos(videos: list[dict], cfg, now: datetime, exclude_ids: set[str])
         hay = " ".join([v["title"], v["description"], *v["tags"]]).lower()
         if any(k.lower() in hay for k in cfg.exclude_keywords):
             continue
+        if cfg.include_keywords and not any(k.lower() in hay for k in cfg.include_keywords):
+            continue
         out.append(v)
     out.sort(key=lambda v: v["views_per_hour"], reverse=True)
     return out[: cfg.max_videos]

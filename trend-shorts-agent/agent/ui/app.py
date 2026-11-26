@@ -81,7 +81,8 @@ if page == PAGES[0]:
     d = today(settings)
     from agent.pipeline import today_runs
     runs_today = today_runs(session, d)
-    general_runs = [r for r in runs_today if "kids" not in r.date]
+    from agent.config import profile_label, profile_of
+    general_runs = [r for r in runs_today if profile_of(r.date) == "general"]
     run = general_runs[0] if general_runs else None
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("오늘 날짜", d, help=f"오늘 실행 {len(runs_today)}회" if runs_today else None)
@@ -109,13 +110,16 @@ if page == PAGES[0]:
     if b2.button("🧒 어린이용 영상 만들기", use_container_width=True,
                  help="동물·과학·공룡·우주 등 어린이에게 좋은 인기 영상만 모아 쉬운 말로 대본을 씁니다 (아동용으로 표시)"):
         start_job("run-daily", ["run-daily", "--kids"])
+    if b2.button("⚽ 축구 영상 만들기", use_container_width=True,
+                 help="축구 관련 인기 영상만 모아 경기 결과·기록·이적 소식 등으로 대본을 씁니다 (실제 경기 영상은 저작권 때문에 사용 안 함)"):
+        start_job("run-daily", ["run-daily", "--soccer"])
     st.caption("② 분석이 끝나면 **✅ 후보 검토** 메뉴에서 승인 → ③ 제작")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
     for r in runs_today[:3]:
         summary = settings.data_dir / "runs" / r.date / "summary.txt"
         if summary.exists():
-            label = "🧒 어린이용" if "kids" in r.date else "일반"
+            label = profile_label(r.date)
             st.info(f"**{label} 분석 결과** ({r.date})\n\n" + summary.read_text(encoding="utf-8").replace("\n", "\n\n"))
     if run:
         with st.expander("결과가 이상하면: 오늘 분석을 처음부터 다시"):
