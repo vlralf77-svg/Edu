@@ -170,3 +170,52 @@ def test_produce_with_real_video_clips(settings, monkeypatch, sample_clip):
     from agent.production.composer import probe
     info = probe(out / "final.mp4")
     assert (info["width"], info["height"]) == SIZE and info["duration"] <= 60
+
+
+# ---------------------------------------------------------------- 기사 기반 정확한 이미지
+def test_wiki_lead_image_license_checked():
+    from agent.production.visuals import WikiLeadImage
+
+    def handler(req):
+        h, p = req.url.host, dict(req.url.params)
+        if h == "en.wikipedia.org":
+            title = p["titles"]
+            name = {"Son Heung-min": "Son_2022.jpg", "Some Company": "Logo_local.png"}.get(title)
+            pages = {"1": {"title": title, **({"pageimage": name} if name else {})}}
+            return httpx.Response(200, json={"query": {"pages": pages}})
+        if h == "ko.wikipedia.org":
+            return httpx.Response(200, json={"query": {"pages": {"-1": {"missing": ""}}}})
+        if h == "commons.wikimedia.org":
+            f = p["titles"]
+            if f == "File:Logo_local.png":   # 위키백과에만 있는 비자유 파일
+                return httpx.Response(200, json={"query": {"pages": {"-1": {"title": f, "missing": ""}}}})
+            return httpx.Response(200, json={"query": {"pages": {"5": {"title": f, "imageinfo": [{
+                "url": "https://upload/x.jpg", "thumburl": "https://upload/thumb.jpg", "descriptionurl": "https://c/x",
+                "extmetadata": {"LicenseShortName": {"value": "CC BY-SA 4.0"}, "Artist": {"value": "Kim"}}}]}}}})
+        return httpx.Response(404)
+    w = WikiLeadImage(http=httpx.Client(transport=httpx.MockTransport(handler)))
+    r = w.search("Son Heung-min")
+    assert r[0]["url"] == "https://upload/thumb.jpg" and r[0]["via"] == "wikipedia_lead" and r[0]["license"] == "CC BY-SA 4.0"
+    assert w.search("Some Company") == []          # 비자유 로컬 이미지는 제외
+    assert w.search("Nobody") == []
+
+
+def test_multiple_queries_tried_in_order(tmp_path, sample_clip):
+    class Picky(FakeVideo):
+        def search(self, query, min_duration=3):
+            self.queries.append(query)
+            return super().search(query) if "container port" in query else []
+    v = Picky(sample_clip)
+    f = VisualFetcher(["pixabay_video"], SIZE, clients={"pixabay_video": v})
+    got = f.fetch({"idx": 1, "visual_query": "semiconductor cleanroom | cargo ship container port | chip",
+                   "on_screen_text": "t"}, tmp_path / "s1", 3)
+    assert got["kind"] == "video"
+    assert list(dict.fromkeys(v.queries)) == ["semiconductor cleanroom", "cargo ship container port"]  # 3번째는 시도 안 함
+
+
+def test_user_image_overrides_search(tmp_path):
+    p = tmp_path / "mine.jpg"
+    Image.new("RGB", (1600, 900), "purple").save(p)
+    f = VisualFetcher(["pixabay_video"], SIZE, clients={"pixabay_video": Broken()})
+    got = f.fetch({"idx": 1, "visual_query": "x", "user_image": str(p)}, tmp_path / "s1", 3)
+    assert got["source"] == "user" and Image.open(got["path"]).size == SIZE

@@ -9,12 +9,15 @@
 - 실명 인물에 대한 단정적 부정 표현 금지, 의료·투자 조언 금지
 - 장면 4~7개로 나누고, 장면마다 아래 세 가지를 제시한다. **화면이 실제 영상·사진으로 채워지므로 시청자가 이슈를 눈으로 느낄 수 있게** 고른다.
   - on_screen_text: 화면 상단 텍스트 (12자 이내)
-  - visual_query: 무료 스톡 **영상** 검색어 (영문 3~6단어). 추상어 대신 실제로 촬영 가능한 구체적 장면을 묘사
-    (좋음: "crowd cheering in stadium at night", "stock market trader screens", "fire truck on city street"
-     나쁨: "success", "news", "economy"). 실존 인물·로고·브랜드 이름은 넣지 않는다.
-  - visual_subject: 그 장면에서 보여줄 **실존 인물·기관·기업·장소의 영문 위키백과 표기** (예: "Son Heung-min", "Samsung Electronics",
-    "National Assembly (South Korea)"). 해당 없으면 빈 문자열. 사건·사고 피해자, 미성년자, 일반인은 절대 넣지 않는다.
-    같은 인물을 모든 장면에 넣지 말고 1~2개 장면에만 넣는다.
+  - visual_query: 무료 스톡 **영상** 검색어 **2~3개를 " | " 로 구분**해 가장 구체적인 것부터 (각각 영문 3~6단어).
+    그 장면 문장에 나오는 **구체적인 사물·장소·행동**을 그대로 찍은 장면이어야 한다. 추상어 금지.
+    (예: 반도체 수출 증가 → "semiconductor wafer factory cleanroom | cargo ship container port | computer chip closeup"
+         폭설 → "heavy snow city street cars | snow plow truck | people walking in snowstorm"
+     나쁨: "success", "news", "economy", "business people"). 실존 인물·로고·브랜드 이름은 넣지 않는다.
+  - visual_subject: 그 장면에서 보여줄 **조사 자료(기사)에 실제로 나온 인물·기관·기업·장소·제품의 영문 위키백과 문서 제목**
+    (예: "Son Heung-min", "Samsung Electronics", "National Assembly (South Korea)", "Incheon International Airport").
+    위키백과 대표 사진이 자동으로 들어가므로, 이야기의 주인공이 분명한 장면에는 꼭 넣는다. 해당 없으면 빈 문자열.
+    사건·사고 피해자, 미성년자, 일반인은 절대 넣지 않는다. 같은 대상은 1~2개 장면에만.
 - seconds 는 장면 낭독 예상 시간(초), sources 는 실제로 사용한 조사 자료 URL
 - title 은 40자 이내, hashtags 는 3~6개
 {feedback}

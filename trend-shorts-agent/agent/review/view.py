@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import streamlit as st
 from sqlalchemy import select
@@ -43,10 +44,32 @@ def render_review(settings, box=None) -> None:
                 st.caption(" ".join(j.get("hashtags", [])))
                 edited_scenes = []
                 for sc in j.get("scenes", []):
-                    txt = st.text_area(f"장면 {sc['idx']} · [{sc['on_screen_text']}] · 🎞 {sc['visual_query']}"
-                                       + (f" · 👤 {sc['visual_subject']}" if sc.get("visual_subject") else ""),
-                                       sc["narration"], key=f"n-{script.id}-{sc['idx']}", height=70)
-                    edited_scenes.append({**sc, "narration": txt})
+                    k = f"{script.id}-{sc['idx']}"
+                    txt = st.text_area(f"장면 {sc['idx']} · [{sc['on_screen_text']}]", sc["narration"], key=f"n-{k}",
+                                       height=70)
+                    with st.expander(f"🖼 장면 {sc['idx']} 화면 바꾸기 — 🎞 {sc.get('visual_query', '')[:40]}"
+                                     + (f" · 👤 {sc['visual_subject']}" if sc.get("visual_subject") else "")
+                                     + (" · 📎 내 이미지" if sc.get("user_image") else "")):
+                        q = st.text_input("영상 검색어 (영문, ' | ' 로 여러 개, 구체적인 것부터)", sc.get("visual_query", ""),
+                                          key=f"q-{k}")
+                        subj = st.text_input("보여줄 인물·기관·장소 (영문 위키백과 제목 — 대표 사진이 자동으로 들어감)",
+                                             sc.get("visual_subject", ""), key=f"s-{k}")
+                        user_img = sc.get("user_image", "")
+                        up = st.file_uploader("또는 내 이미지 올리기 (직접 찍었거나 사용 허락을 받은 이미지만)",
+                                              type=["png", "jpg", "jpeg", "webp"], key=f"u-{k}")
+                        if up is not None:
+                            d = settings.data_dir / "user_visuals" / str(script.topic_id)
+                            d.mkdir(parents=True, exist_ok=True)
+                            dest = d / f"scene_{sc['idx']:02d}{Path(up.name).suffix.lower()}"
+                            dest.write_bytes(up.getvalue())
+                            user_img = str(dest)
+                        if user_img and Path(user_img).exists():
+                            st.image(user_img, width=160)
+                            if st.checkbox("내 이미지 빼기", key=f"rm-{k}"):
+                                user_img = ""
+                        st.caption("바꾼 뒤 아래 [💾 수정 저장] 을 눌러야 반영됩니다.")
+                    edited_scenes.append({**sc, "narration": txt, "visual_query": q.strip(), "visual_subject": subj.strip(),
+                                          "user_image": user_img})
             with c2:
                 st.markdown(f"**리스크 플래그**: {', '.join(script.risk_flags or []) or '없음'}")
                 for f in j.get("fact_check", {}).get("flags", []):

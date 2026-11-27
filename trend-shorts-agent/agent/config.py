@@ -95,7 +95,7 @@ class ProductionCfg(BaseModel):
     edge_voice: str = "ko-KR-SunHiNeural"
     style: str = "classic"   # 화면 스타일: classic(기본) | dynamic(요즘 숏츠: 상단 제목 띠·큰 단어 자막·흔들림·효과음·진행 막대) | cartoon
     visual_sources: list[str] = Field(
-        default_factory=lambda: ["commons", "pixabay_video", "pexels_video", "pixabay", "pexels"])
+        default_factory=lambda: ["wiki_lead", "commons", "pixabay_video", "pexels_video", "pixabay", "pexels"])
     commons_max_per_subject: int = 2
     max_clip_mb: float = 80
     burn_subtitles: bool = True
@@ -339,7 +339,7 @@ def apply_profile(settings: Settings, profile: str) -> Settings:
     s.production.edge_voice = k.edge_voice
     s.production.style = k.style
     if k.style == "cartoon":  # 만화 클립·일러스트를 먼저 찾고, 없으면 실사 영상에 만화 필터
-        s.production.visual_sources = ["pixabay_video_anim", "pixabay_illust", "commons", "pixabay_video",
+        s.production.visual_sources = ["pixabay_video_anim", "pixabay_illust", "wiki_lead", "commons", "pixabay_video",
                                        "pexels_video", "pixabay", "pexels"]
     return s
 

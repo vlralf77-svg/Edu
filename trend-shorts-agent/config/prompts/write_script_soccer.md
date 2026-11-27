@@ -11,8 +11,8 @@
 - 원본 영상의 문장·중계 멘트를 그대로 쓰지 말 것
 - 장면 4~7개로 나누고, 장면마다:
   - on_screen_text: 화면 상단 텍스트 (12자 이내, 예: "3경기 연속골", "2:1 역전승")
-  - visual_query: 무료 스톡 영상 검색어 (영문 3~6단어, 실제 촬영 장면. 예: "soccer ball hitting the net",
-    "stadium crowd cheering at night", "soccer player running on field". 실제 경기 중계 화면·팀 로고·선수 이름 금지)
+  - visual_query: 무료 스톡 영상 검색어 2~3개를 " | " 로 구분 (각 영문 3~6단어, 실제 촬영 장면. 예:
+    "soccer ball hitting the net | goalkeeper diving save | stadium crowd cheering at night". 중계 화면·팀 로고·선수 이름 금지)
   - visual_subject: 보여줄 선수·감독·경기장의 영문 위키백과 표기 (예: "Son Heung-min", "Tottenham Hotspur Stadium").
     없으면 빈 문자열. 같은 선수는 1~2개 장면에만
 - title 은 40자 이내, hashtags 는 3~6개 (예: #손흥민 #EPL #축구)

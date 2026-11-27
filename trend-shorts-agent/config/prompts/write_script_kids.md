@@ -10,7 +10,8 @@
 - 확인되지 않은 내용은 쓰지 말 것. 원본 영상의 문장을 그대로 쓰지 말 것
 - 장면 4~7개로 나누고, 장면마다:
   - on_screen_text: 화면 상단 텍스트 (10자 이내, 쉬운 말)
-  - visual_query: 무료 스톡 영상 검색어 (영문 3~6단어, 밝고 귀여운 실제 장면. 예: "baby penguins walking on ice", "colorful planets in space")
+  - visual_query: 무료 스톡 영상 검색어 2~3개를 " | " 로 구분 (각 영문 3~6단어, 밝고 귀여운 실제 장면.
+    예: "baby penguins walking on ice | penguin colony antarctica | cute penguin cartoon")
   - visual_subject: 보여줄 동물·장소·사물의 영문 위키백과 표기 (예: "Tyrannosaurus", "Saturn"). 실존 인물은 넣지 않는다. 없으면 빈 문자열
 - title 은 30자 이내로 아이와 보호자가 함께 궁금해할 제목, hashtags 는 3~6개 (예: #어린이과학 #동물상식)
 {feedback}

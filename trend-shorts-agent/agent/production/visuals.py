@@ -230,6 +230,50 @@ class CommonsSearch(_Client):
         return out
 
 
+class WikiLeadImage(_Client):
+    """위키백과 문서의 대표 사진 = 그 인물·기관·장소의 '정확한' 사진.
+    단, Wikimedia Commons 에 상업 이용 가능한 라이선스로 올라온 파일만 쓴다 (위키백과 자체에만 있는 비자유 이미지는 제외)."""
+
+    def search(self, subject: str) -> list[dict]:
+        out = []
+        for lang in ("en", "ko"):
+            try:
+                r = self.http.get(f"https://{lang}.wikipedia.org/w/api.php", params={
+                    "action": "query", "format": "json", "titles": subject, "redirects": 1,
+                    "prop": "pageimages", "piprop": "name"})
+                r.raise_for_status()
+            except httpx.HTTPError:
+                continue
+            pages = r.json().get("query", {}).get("pages", {})
+            names = [p.get("pageimage") for p in pages.values() if p.get("pageimage")]
+            if not names:
+                continue
+            info = self._commons_info(names[0], subject)
+            if info:
+                out.append(info)
+                break
+        return out
+
+    def _commons_info(self, filename: str, subject: str) -> dict | None:
+        r = self.http.get(CommonsSearch.API, params={
+            "action": "query", "format": "json", "titles": f"File:{filename}", "prop": "imageinfo",
+            "iiprop": "url|extmetadata|size|mime", "iiurlwidth": 1600})
+        r.raise_for_status()
+        for p in r.json().get("query", {}).get("pages", {}).values():
+            if "missing" in p or not p.get("imageinfo"):
+                return None          # Commons 에 없음 = 위키백과 로컬 비자유 파일 → 사용 안 함
+            info = p["imageinfo"][0]
+            meta = info.get("extmetadata", {})
+            lic = meta.get("LicenseShortName", {}).get("value", "")
+            if not commons_license_ok(lic) or SKIP_TITLE.search(p.get("title", "")):
+                return None
+            return {"url": info.get("thumburl") or info.get("url"), "page": info.get("descriptionurl", ""),
+                    "author": _strip_html(meta.get("Artist", {}).get("value", "")) or "unknown", "license": lic,
+                    "source": "wikimedia_commons", "title": p.get("title", ""), "subject": subject,
+                    "via": "wikipedia_lead", "note": "위키백과 대표 사진 (자유 라이선스)"}
+        return None
+
+
 # ---------------------------------------------------------------- 장면별 선택
 class VisualFetcher:
     """한 영상 안에서 같은 소스 반복을 피하면서 장면별 비주얼을 확보한다."""
@@ -249,6 +293,8 @@ class VisualFetcher:
         if name not in self.clients:
             if name == "commons":
                 self.clients[name] = CommonsSearch()
+            elif name == "wiki_lead":
+                self.clients[name] = WikiLeadImage()
             elif "_video" in name:
                 self.clients[name] = StockVideoSearch(name)
             else:
@@ -258,7 +304,7 @@ class VisualFetcher:
     def _try(self, source: str, scene: dict, base: Path, duration: float) -> dict | None:
         query = scene.get("visual_query", "")
         subject = (scene.get("visual_subject") or "").strip()
-        if source == "commons":
+        if source in ("commons", "wiki_lead"):
             if not subject or self.subject_count.get(subject, 0) >= self.max_per_subject:
                 return None
             for c in self.client(source).search(subject):
@@ -270,8 +316,14 @@ class VisualFetcher:
                 self.subject_count[subject] = self.subject_count.get(subject, 0) + 1
                 return {**c, "kind": "image", "path": str(out)}
             return None
-        if not query:
-            return None
+        queries = [q.strip() for q in query.split("|") if q.strip()]  # 'a | b | c' → 구체적인 것부터 차례로
+        for q in queries:
+            got = self._try_query(source, q, base, duration)
+            if got:
+                return got
+        return None
+
+    def _try_query(self, source: str, query: str, base: Path, duration: float) -> dict | None:
         if "_video" in source:
             for c in self.client(source).search(query, min_duration=min(duration, 5)):
                 if c["url"] in self.used:
@@ -293,6 +345,11 @@ class VisualFetcher:
         return None
 
     def fetch(self, scene: dict, base: Path, duration: float) -> dict:
+        user = scene.get("user_image")
+        if user and Path(user).exists():  # 검토 화면에서 직접 올린 이미지 (권리 보유 확인)
+            out = base.with_suffix(".jpg")
+            fit_with_blur(Image.open(user), self.size).save(out, quality=92)
+            return {"source": "user", "kind": "image", "path": str(out), "license": "사용자 제공(권리 보유 확인)"}
         for source in self.sources:
             try:
                 got = self._try(source, scene, base, duration)
