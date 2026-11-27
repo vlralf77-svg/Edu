@@ -88,7 +88,7 @@ if page == PAGES[0]:
     c1.metric("오늘 날짜", d, help=f"오늘 실행 {len(runs_today)}회" if runs_today else None)
     STATUS_KO = {"started": "진행 중", "collected": "수집 완료", "clustered": "주제 정리 완료", "researched": "조사 완료",
                  "scripted": "대본 작성 완료", "checked": "팩트체크 완료", "pending_review": "검토 대기"}
-    c2.metric(f"오늘 분석 ({len(runs_today)}회차)" if len(runs_today) > 1 else "오늘 분석",
+    c2.metric(f"오늘 분석 ({len(general_runs)}회차)" if len(general_runs) > 1 else "오늘 분석",
               STATUS_KO.get(run.status, run.status) if run else "시작 전")
     pending = session.scalars(select(Script).where(Script.approval_status == "pending_review")).all()
     approved = session.scalars(select(Script).where(Script.approval_status == "approved")).all()
@@ -122,6 +122,22 @@ if page == PAGES[0]:
     st.caption("② 분석이 끝나면 **✅ 후보 검토** 메뉴에서 승인 → ③ 제작")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
+    st.subheader("📰 기사 링크로 만들기")
+    with st.form("from_url"):
+        urls_txt = st.text_area("뉴스 기사 주소 (한 줄에 하나, 최대 5개)", height=100,
+                                placeholder="https://www.yna.co.kr/view/AKR2026...\nhttps://news.naver.com/...")
+        cc1, cc2 = st.columns([2, 1])
+        prof = cc1.radio("분야", ["general", "kids", "soccer"], horizontal=True,
+                         format_func={"general": "일반", "kids": "🧒 어린이", "soccer": "⚽ 축구"}.get)
+        go = cc2.form_submit_button("📰 이 기사로 영상 만들기", type="primary", use_container_width=True)
+    if go:
+        urls = [u.strip() for u in urls_txt.splitlines() if u.strip().startswith("http")]
+        if not urls:
+            st.warning("http 로 시작하는 기사 주소를 넣어 주세요.")
+        else:
+            start_job("from-url", ["from-url", "--profile", prof, *urls[:5]])
+    st.caption("기사 내용에서 사실만 뽑아 새로 대본을 씁니다 (문장 그대로 베끼지 않음). 같은 소식의 다른 기사로 교차 확인하고, "
+               "원문 링크는 설명란 출처에 들어갑니다. 끝나면 ✅ 후보 검토에서 승인 → ③ 제작.")
     for r in runs_today[:3]:
         summary = settings.data_dir / "runs" / r.date / "summary.txt"
         if summary.exists():

@@ -47,6 +47,18 @@ def run_daily(run: Optional[str] = RunOpt, force: bool = ForceOpt,
     typer.echo(f"\n후보 목록: data/runs/{d}/shortlist.md")
 
 
+@app.command("from-url")
+def from_url(urls: list[str] = typer.Argument(..., help="뉴스 기사 주소 (최대 5개)"),
+             profile: str = typer.Option("general", "--profile", help="general | kids | soccer")):
+    """📰 기사 링크로 영상 대본 만들기 (기사 사실 추출 → 대본 → 팩트체크 → 검토 후보)"""
+    from .pipeline import run_from_urls
+    d = run_from_urls(urls, profile)
+    summary = get_settings().data_dir / "runs" / d / "summary.txt"
+    if summary.exists():
+        typer.echo("\n" + summary.read_text(encoding="utf-8"))
+    typer.echo(f"\n✅ 후보 검토에서 승인 후 제작하세요 (실행: {d})")
+
+
 @app.command()
 def collect(run: Optional[str] = RunOpt, force: bool = ForceOpt):
     """YouTube 트렌드 영상 수집 → videos.json"""

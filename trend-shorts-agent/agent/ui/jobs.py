@@ -21,6 +21,7 @@ JOB_LABELS = {
     "collect": "YouTube 수집 테스트",
     "setup-ffmpeg": "FFmpeg 자동 설치",
     "publish": "YouTube 업로드",
+    "from-url": "기사 링크로 영상 만들기",
     "youtube-login": "YouTube 계정 연결",
 }
 

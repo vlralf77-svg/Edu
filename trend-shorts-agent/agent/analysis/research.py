@@ -206,3 +206,31 @@ def research(ctx, limit: int | None = None) -> dict[str, dict]:
         log.info("조사 완료: %s (출처 %d, 신뢰도 %s)", row.title, len(data["sources"]), data["confidence"])
     ctx.set_status("researched")
     return out
+
+
+def research_from_article(ctx, art: dict, searcher: _HTTPSearch | None = None) -> dict:
+    """기사 1건을 1차 출처로, 같은 소식의 다른 기사로 교차 확인해 사실 목록을 만든다."""
+    s = ctx.settings
+    results = [{"url": art["url"], "title": art["title"], "date": art.get("published", ""),
+                "publisher": art.get("publisher", ""),
+                "snippet": (art.get("description", "") + " / " + art.get("text", "")).replace("\n", " / ")[:3500]}]
+    provider = resolve_provider(s)
+    if searcher is None:
+        searcher = {"tavily": TavilySearch, "serper": SerperSearch}.get(provider, NewsRSSSearch)()
+    try:
+        for r in searcher.search(art["title"][:60]):
+            if r["url"] != art["url"] and len(results) < 9:
+                results.append(r)
+        ctx.tracker.add("search_calls:news", 1)
+    except Exception as e:  # noqa: BLE001  교차 확인 실패해도 원문 기사만으로 진행
+        log.warning("관련 기사 검색 실패(%s) → 원문 기사만으로 진행", e)
+    lines = "\n".join(f"- [{r.get('date', '')}] {r.get('publisher', '')} | {r['title']} ({r['url']}): {r.get('snippet', '')}"
+                      for r in results)
+    prompt = load_prompt("research_summarize", topic=art["title"], summary=art.get("description", ""), results=lines)
+    data, _ = ctx.llm.complete_json(prompt, schema=RESEARCH_SCHEMA)
+    data = finalize(data, s.research.min_sources, {r["url"] for r in results})
+    if not any(src["url"] == art["url"] for src in data["sources"]):  # 원문은 항상 출처에 남김
+        data["sources"].insert(0, {"url": art["url"], "title": art["title"], "publisher": art.get("publisher", ""),
+                                   "published_date": art.get("published", ""), "facts": data.get("key_facts", [])[:3]})
+    data["origin_article"] = art["url"]
+    return data

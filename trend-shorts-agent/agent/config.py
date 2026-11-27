@@ -354,7 +354,7 @@ def profile_of(run_name: str) -> str:
 
 def profile_label(run_name: str) -> str:
     icon, name = PROFILES[profile_of(run_name)]
-    return f"{icon} {name}".strip()
+    return f"{icon} {name}".strip() + (" · 📰 기사" if "-url" in (run_name or "") else "")
 
 
 def allowed_moods(settings: Settings) -> list[str] | None:

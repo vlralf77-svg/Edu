@@ -223,7 +223,7 @@ def today_runs(session, day: str) -> list:
                                 .order_by(Run.id.desc())))
 
 
-def next_batch(settings, kids: bool = False, profile: str | None = None) -> str:
+def next_batch(settings, kids: bool = False, profile: str | None = None, suffix: str = "") -> str:
     """같은 날 새로 한 번 더 돌릴 때 쓸 실행 이름. 어린이용은 'YYYY-MM-DD-kids', '-kids-2' …"""
     from .context import today
     from .models import session_scope
@@ -235,9 +235,70 @@ def next_batch(settings, kids: bool = False, profile: str | None = None) -> str:
         s.close()
     profile = profile or ("kids" if kids else "general")
     base = day if profile == "general" else f"{day}-{profile}"
+    if suffix:
+        base += f"-{suffix}"
     if base not in names:
         return base
     n = 2
     while f"{base}-{n}" in names:
         n += 1
     return f"{base}-{n}"
+
+
+def run_from_urls(urls: list[str], profile: str = "general", settings=None, fetch=None, searcher=None) -> str:
+    """📰 기사 링크로 만들기: 기사 → 사실 추출(+관련 기사 교차 확인) → 대본·팩트체크 → 검토 후보."""
+    import hashlib
+    from .analysis.article import ArticleError, fetch_article
+    from .analysis.research import research_from_article
+    from .config import get_settings
+    st = settings or get_settings()
+    fetch = fetch or fetch_article
+    urls = [u.strip() for u in urls if u and u.strip()][:5]
+    if not urls:
+        raise ValueError("기사 주소를 1개 이상 넣어 주세요")
+    name = next_batch(st, profile=profile, suffix="url")
+    ctx = RunContext(name, st)
+    errors = []
+    try:
+        for i, url in enumerate(urls):
+            try:
+                art = fetch(url)
+                log.info("기사: %s (%s, 본문 %d자)", art["title"], art["publisher"], len(art["text"]))
+                data = research_from_article(ctx, art, searcher)
+            except (ArticleError, ValueError) as e:
+                errors.append(str(e))
+                log.warning("%s", e)
+                continue
+            except BudgetExceeded:
+                raise
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{url}: {type(e).__name__}: {e}")
+                log.exception("기사 처리 실패: %s", url)
+                continue
+            key = "url-" + hashlib.sha1(url.encode()).hexdigest()[:8]
+            t = Topic(run_id=ctx.run.id, key=key, title=art["title"] or url, summary=art.get("description", ""),
+                      score=100 - i, fitness=4, angle_ideas=[], research=data, confidence=data["confidence"],
+                      status="researched")
+            ctx.session.add(t)
+            ctx.write_json(f"research/{key}.json", data)
+        ctx.session.commit()
+        if not ctx.session.scalar(select(Topic.id).where(Topic.run_id == ctx.run.id).limit(1)):
+            raise RuntimeError("기사를 하나도 처리하지 못했습니다:\n" + "\n".join(errors))
+        ctx.set_status("researched")
+        step_write(ctx)
+        step_shortlist(ctx)
+        ctx.finish("; ".join(errors) or None)
+        f = funnel(ctx)
+        summary = (f"기사 {len(urls)}개 → 처리 {f['topics']}개 → 검토 후보 {f['candidates']}개"
+                   + ("\n다음 단계: ✅ 후보 검토에서 승인 → 🏠 홈의 [승인된 영상 제작] 버튼을 누르면 영상이 만들어집니다."
+                      if f["candidates"] else "\n대본 작성이 실패했습니다. 잠시 뒤 같은 기사로 다시 시도해 주세요."))
+        if errors:
+            summary += "\n처리 못 한 기사: " + " / ".join(errors)
+        (ctx.run_dir / "summary.txt").write_text(summary, encoding="utf-8")
+        log.info("기사로 만들기 완료 (%s)\n%s", name, summary)
+    except Exception as e:
+        ctx.finish(f"{type(e).__name__}: {e}")
+        raise
+    finally:
+        ctx.close()
+    return name
