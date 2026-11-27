@@ -24,16 +24,39 @@ def run_ffmpeg(args: list[str]) -> None:
 
 
 # ---------------------------------------------------------------- 영상
+CARTOON_FILTER = (  # 색 단순화 + 검은 외곽선 → 만화 느낌 (속도 위해 절반 해상도에서 처리 후 확대)
+    "scale=iw/2:ih/2,split[ca][cb];[cb]median=radius=2,lutrgb=r='floor(val/40)*40+20':g='floor(val/40)*40+20':"
+    "b='floor(val/40)*40+20',eq=saturation=1.5:contrast=1.08,format=gbrp[cp];"
+    "[ca]edgedetect=low=0.04:high=0.12,negate,erosion,format=gbrp[ce];"
+    "[cp][ce]blend=all_mode=multiply,scale=iw*2:ih*2:flags=bicubic")
+
+
+def _style_chain(w: int, h: int, style: str, cartoonize: bool) -> str:
+    """배경 영상 뒤에 붙는 스타일 효과 (쉼표로 시작)."""
+    chain = ""
+    if cartoonize:
+        chain += "," + CARTOON_FILTER
+    if style == "dynamic":  # 장면 시작 0.25초 흔들림 → 빠른 전환 느낌
+        sw, sh = int(w * 1.04) // 2 * 2, int(h * 1.04) // 2 * 2
+        chain += (f",scale={sw}:{sh},crop={w}:{h}:x='(iw-ow)/2+if(lt(t,0.25),18*sin(t*70),0)'"
+                  f":y='(ih-oh)/2+if(lt(t,0.25),12*cos(t*60),0)'")
+    return chain
+
+
 def render_scene(image: Path, overlay: Path, duration: float, out: Path, idx: int,
-                 size: tuple[int, int] = (1080, 1920), fps: int = 30, kind: str = "image") -> None:
+                 size: tuple[int, int] = (1080, 1920), fps: int = 30, kind: str = "image",
+                 style: str = "classic", cartoonize: bool = False) -> None:
     w, h = size
     n = max(int(round(duration * fps)), 1)
+    fx = _style_chain(w, h, style, cartoonize)
+    # 오버레이(제목·카드)는 장면 시작에 0.25초 페이드 인 → 툭 튀어나오는 느낌
+    ov = "[1:v]format=rgba,fade=in:st=0:d=0.25:alpha=1[ov];" if style != "classic" else "[1:v]null[ov];"
     if kind == "video":
         # 실제 촬영 클립: 9:16 로 꽉 차게 크롭, 짧으면 반복, 원본 오디오 제거, 살짝 줌인으로 움직임 보강
-        fc = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fps},"
-              f"scale=w='{w}*(1+0.06*t/{max(duration, 0.1):.3f})':h=-2:eval=frame,crop={w}:{h},setsar=1[bg];"
-              f"[bg][1:v]overlay=0:0,format=yuv420p[v]")
-        run_ffmpeg(["-stream_loop", "-1", "-i", str(image), "-i", str(overlay), "-filter_complex", fc,
+        fc = (f"{ov}[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fps},"
+              f"scale=w='{w}*(1+0.06*t/{max(duration, 0.1):.3f})':h=-2:eval=frame,crop={w}:{h}{fx},setsar=1[bg];"
+              f"[bg][ov]overlay=0:0,format=yuv420p[v]")
+        run_ffmpeg(["-stream_loop", "-1", "-i", str(image), "-loop", "1", "-i", str(overlay), "-filter_complex", fc,
                     "-map", "[v]", "-an", "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264",
                     "-preset", "veryfast", "-crf", "18", str(out)])
         return
@@ -47,11 +70,11 @@ def render_scene(image: Path, overlay: Path, duration: float, out: Path, idx: in
         z, x, y = "1.12", f"(iw-iw/zoom)*on/{n}", "ih/2-(ih/zoom/2)"
     else:  # 아래→위 팬
         z, x, y = "1.12", "iw/2-(iw/zoom/2)", f"(ih-ih/zoom)*(1-on/{n})"
-    fc = (f"[0:v]scale={sw}:{sh},zoompan=z='{z}':x='{x}':y='{y}':d={n}:s={w}x{h}:fps={fps},setsar=1[bg];"
-          f"[bg][1:v]overlay=0:0,format=yuv420p[v]")
-    run_ffmpeg(["-loop", "1", "-i", str(image), "-i", str(overlay), "-filter_complex", fc, "-map", "[v]",
-                "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-                str(out)])
+    fc = (f"{ov}[0:v]scale={sw}:{sh},zoompan=z='{z}':x='{x}':y='{y}':d={n}:s={w}x{h}:fps={fps}{fx},setsar=1[bg];"
+          f"[bg][ov]overlay=0:0,format=yuv420p[v]")
+    run_ffmpeg(["-loop", "1", "-i", str(image), "-loop", "1", "-i", str(overlay), "-filter_complex", fc,
+                "-map", "[v]", "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
+                "-crf", "18", str(out)])
 
 
 def concat_videos(parts: list[Path], out: Path) -> None:
@@ -128,14 +151,55 @@ def mix_audio(narration: Path, bgm: Path | None, segments: list[Segment], out: P
     return info
 
 
+def sfx(kind: str) -> np.ndarray:
+    """직접 합성한 효과음 (저작권 걱정 없음). whoosh: 휙 / pop: 뽁."""
+    rng = np.random.default_rng(7)
+    if kind == "pop":
+        n = int(0.12 * SR)
+        t = np.arange(n) / SR
+        f = 700 + 900 * t / t[-1]
+        return (0.5 * np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 30)).astype(np.float32)
+    n = int(0.35 * SR)
+    t = np.arange(n) / SR
+    noise = rng.standard_normal(n).astype(np.float32)
+    k = np.clip((8 + 40 * t / t[-1]).astype(int), 1, 64)  # 점점 밝아지는 바람 소리
+    out = np.empty(n, dtype=np.float32)
+    acc = np.cumsum(np.concatenate([[0], noise]))
+    for i in range(n):
+        j = max(0, i - k[i])
+        out[i] = (acc[i + 1] - acc[j]) / (i + 1 - j)
+    env = np.sin(np.pi * t / t[-1]) ** 2
+    return (out * env * 2.5).astype(np.float32)
+
+
+def add_sfx(mix_path: Path, times: list[float], kind: str, gain_db: float = -10) -> None:
+    """장면 전환 시점에 효과음 얹기."""
+    audio, sr = sf.read(str(mix_path), dtype="float32", always_2d=True)
+    s = sfx(kind)
+    s = s / (np.max(np.abs(s)) or 1) * 10 ** (gain_db / 20)
+    for t in times:
+        a = max(int((t - (0.15 if kind == "whoosh" else 0)) * sr), 0)
+        b = min(a + len(s), len(audio))
+        if b > a:
+            audio[a:b] += s[: b - a, None]
+    peak = float(np.max(np.abs(audio))) or 1
+    if peak > 0.98:
+        audio *= 0.98 / peak
+    sf.write(str(mix_path), audio, sr, subtype="PCM_16")
+
+
 # ---------------------------------------------------------------- 최종
 def finalize(video: Path, audio: Path, out: Path, total: float, ass: Path | None, fonts_dir: Path | None,
-             fps: int = 30) -> None:
+             fps: int = 30, progress_bar: bool = False, size: tuple[int, int] = (1080, 1920)) -> None:
     vf = "null"
     if ass is not None:
         vf = f"ass='{filter_path(ass)}'" + (f":fontsdir='{filter_path(fonts_dir)}'" if fonts_dir else "")
+    video_fc = f"[0:v]{vf},format=yuv420p[v]"
+    if progress_bar:  # 화면 맨 아래 노란 진행 막대 (왼쪽에서 오른쪽으로 차오름)
+        video_fc = (f"[0:v]{vf}[v0];color=c=0xFFD400:s={size[0]}x14:r={fps}[bar];"
+                    f"[v0][bar]overlay=x='-W+W*t/{max(total, 0.1):.3f}':y=H-14:shortest=1,format=yuv420p[v]")
     run_ffmpeg(["-i", str(video), "-i", str(audio), "-filter_complex",
-                f"[0:v]{vf},format=yuv420p[v];[1:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample={SR}[a]",
+                f"{video_fc};[1:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample={SR}[a]",
                 "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}", "-r", str(fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "192k",
                 "-movflags", "+faststart", str(out)])

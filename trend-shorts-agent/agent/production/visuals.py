@@ -127,10 +127,10 @@ class StockPhotoSearch(_Client):
             return [{"url": p["src"]["large2x"], "page": p["url"], "author": p.get("photographer", ""),
                      "license": "Pexels License (무료 상업적 이용)", "source": "pexels"}
                     for p in r.json().get("photos", [])]
-        if self.provider == "pixabay" and (key := env("PIXABAY_API_KEY")):
+        if self.provider in ("pixabay", "pixabay_illust") and (key := env("PIXABAY_API_KEY")):
             r = self.http.get("https://pixabay.com/api/", params={
-                "key": key, "q": query, "image_type": "photo", "orientation": "vertical", "safesearch": "true",
-                "per_page": 10})
+                "key": key, "q": query, "orientation": "vertical", "safesearch": "true", "per_page": 10,
+                "image_type": "illustration" if self.provider == "pixabay_illust" else "photo"})
             r.raise_for_status()
             return [{"url": p["largeImageURL"], "page": p["pageURL"], "author": p.get("user", ""),
                      "license": "Pixabay Content License (무료 상업적 이용)", "source": "pixabay"}
@@ -169,9 +169,11 @@ class StockVideoSearch(_Client):
                     out.append({"url": f["link"], "page": v.get("url", ""), "author": v.get("user", {}).get("name", ""),
                                 "width": f["width"], "height": f["height"], "duration": v["duration"],
                                 "license": "Pexels License (무료 상업적 이용)", "source": "pexels"})
-        elif self.provider == "pixabay_video" and (key := env("PIXABAY_API_KEY")):
-            r = self.http.get("https://pixabay.com/api/videos/", params={
-                "key": key, "q": query, "safesearch": "true", "per_page": 10})
+        elif self.provider in ("pixabay_video", "pixabay_video_anim") and (key := env("PIXABAY_API_KEY")):
+            params = {"key": key, "q": query, "safesearch": "true", "per_page": 10}
+            if self.provider == "pixabay_video_anim":
+                params["video_type"] = "animation"   # 만화·애니메이션 클립
+            r = self.http.get("https://pixabay.com/api/videos/", params=params)
             r.raise_for_status()
             for v in r.json().get("hits", []):
                 files = [{"url": x.get("url"), "link": x.get("url"), "width": x.get("width", 0),
@@ -247,7 +249,7 @@ class VisualFetcher:
         if name not in self.clients:
             if name == "commons":
                 self.clients[name] = CommonsSearch()
-            elif name.endswith("_video"):
+            elif "_video" in name:
                 self.clients[name] = StockVideoSearch(name)
             else:
                 self.clients[name] = StockPhotoSearch(name)
@@ -270,14 +272,15 @@ class VisualFetcher:
             return None
         if not query:
             return None
-        if source.endswith("_video"):
+        if "_video" in source:
             for c in self.client(source).search(query, min_duration=min(duration, 5)):
                 if c["url"] in self.used:
                     continue
                 out = base.with_suffix(".mp4")
                 self.client(source).download(c["url"], out, self.max_clip_mb)
                 self.used.add(c["url"])
-                return {**c, "kind": "video", "query": query, "path": str(out)}
+                return {**c, "kind": "video", "query": query, "path": str(out),
+                        "cartoon_native": source == "pixabay_video_anim"}
             return None
         for c in self.client(source).search(query):
             if c["url"] in self.used:
@@ -285,7 +288,8 @@ class VisualFetcher:
             out = base.with_suffix(".jpg")
             crop_vertical(self.client(source).download_image(c["url"]), self.size).save(out, quality=92)
             self.used.add(c["url"])
-            return {**c, "kind": "image", "query": query, "path": str(out)}
+            return {**c, "kind": "image", "query": query, "path": str(out),
+                    "cartoon_native": source == "pixabay_illust"}
         return None
 
     def fetch(self, scene: dict, base: Path, duration: float) -> dict:
@@ -347,3 +351,52 @@ def cta_overlay(overlay_path: Path, style: str, font_path: str = "") -> None:
         d.rounded_rectangle(((w - tw) / 2 - 50, y, (w + tw) / 2 + 50, y + 120), 60, fill=(255, 196, 0, 240))
         d.text(((w - tw) / 2, y + 16), t, font=f, fill=(40, 30, 0))
     img.save(overlay_path)
+
+
+def style_overlay(style: str, video_title: str, text: str, size: tuple[int, int], out: Path, font_path: str = "",
+                  show_card: bool = True) -> None:
+    """스타일별 화면 위 그래픽.
+    dynamic: 상단 검은 띠 + 큰 영상 제목(고정), 가운데 핵심 문구 카드(숫자·기록이 크게 '툭')
+    cartoon: 상단 노란 말풍선 제목
+    classic: 기존 상단 타이틀
+    """
+    if style == "classic":
+        title_overlay(text if show_card else "", size, out, font_path)
+        return
+    w, h = size
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    if style == "dynamic":
+        band = int(h * 0.17)
+        d.rectangle((0, 0, w, band), fill=(0, 0, 0, 235))
+        f = font(78, font_path)
+        lines = textwrap.wrap(video_title, 13)[:2] or [""]
+        y = (band - len(lines) * 96) // 2 + 6
+        for line in lines:
+            tw = d.textlength(line, font=f)
+            d.text(((w - tw) / 2, y), line, font=f, fill=(255, 255, 255))
+            y += 96
+        d.rectangle((0, band - 10, w, band), fill=(255, 212, 0, 255))   # 노란 밑줄
+        if text and show_card:
+            fc = font(118, font_path)
+            tw = d.textlength(text, font=fc)
+            cy = int(h * 0.40)
+            pad = 44
+            d.rounded_rectangle(((w - tw) / 2 - pad + 8, cy + 8, (w + tw) / 2 + pad + 8, cy + 170), 30,
+                                fill=(0, 0, 0, 120))
+            d.rounded_rectangle(((w - tw) / 2 - pad, cy, (w + tw) / 2 + pad, cy + 162), 30,
+                                fill=(230, 33, 23, 245))
+            d.text(((w - tw) / 2, cy + 18), text, font=fc, fill=(255, 255, 255))
+    else:  # cartoon
+        if text and show_card:
+            f = font(96, font_path)
+            tw = d.textlength(text, font=f)
+            y = int(h * 0.09)
+            box = ((w - tw) / 2 - 50, y - 24, (w + tw) / 2 + 50, y + 140)
+            d.rounded_rectangle((box[0] + 8, box[1] + 10, box[2] + 8, box[3] + 10), 70, fill=(40, 30, 20, 160))
+            d.rounded_rectangle(box, 70, fill=(255, 230, 80, 250), outline=(40, 30, 20, 255), width=8)
+            tail_x = w / 2 - 60
+            d.polygon([(tail_x, box[3] - 4), (tail_x + 60, box[3] - 4), (tail_x + 10, box[3] + 60)],
+                      fill=(255, 230, 80, 250), outline=(40, 30, 20, 255))
+            d.text(((w - tw) / 2, y), text, font=f, fill=(40, 30, 20), stroke_width=2, stroke_fill=(255, 255, 255))
+    img.save(out)

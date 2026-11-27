@@ -199,3 +199,60 @@ def test_soccer_uses_soccer_prompts(settings, yt_transport):
 
 def test_upload_body_uses_profile_category():
     assert build_body({"title": "t", "category_id": "17"})["snippet"]["categoryId"] == "17"
+
+
+# ---------------------------------------------------------------- 화면 스타일
+def test_style_profiles(settings):
+    assert apply_profile(settings, "soccer").production.style == "dynamic"
+    assert apply_profile(settings, "soccer").script.target_chars_ko == 200
+    settings.kids.style = "cartoon"
+    k = apply_profile(settings, "kids")
+    assert k.production.style == "cartoon" and k.production.visual_sources[:2] == ["pixabay_video_anim", "pixabay_illust"]
+
+
+def test_dynamic_subtitles_big_words_and_yellow_numbers(tmp_path):
+    from agent.production.subtitles import STYLE_SUB, build_cues, write_ass
+    from agent.production.tts.base import proportional_words
+    cues = build_cues(proportional_words("후반 23분 손흥민의 12번째 골이 터졌어요", 4.0), STYLE_SUB["dynamic"][0])
+    assert all(len(c.text) <= 7 for c in cues)
+    write_ass(cues, tmp_path / "d.ass", "Noto Sans CJK KR", (1080, 1920), style="dynamic")
+    txt = (tmp_path / "d.ass").read_text(encoding="utf-8")
+    assert ",124," in txt and "{\\c&H0000D4FF&}23분" in txt
+    write_ass(cues, tmp_path / "c.ass", "Noto Sans CJK KR", (1080, 1920), style="cartoon")
+    assert ",3,18,0,2," in (tmp_path / "c.ass").read_text(encoding="utf-8")   # 말풍선 상자
+
+
+def test_style_overlays(tmp_path):
+    from agent.production.visuals import style_overlay
+    style_overlay("dynamic", "손흥민 3경기 연속골", "2 : 1", (1080, 1920), tmp_path / "d.png")
+    a = np.array(Image.open(tmp_path / "d.png"))
+    assert (a[50:200, :, 3] > 200).mean() > 0.9                     # 상단 검은 띠
+    card = a[int(1920 * 0.40) + 20: int(1920 * 0.40) + 140]
+    assert ((card[..., 0] > 200) & (card[..., 1] < 60)).sum() > 5000   # 빨간 숫자 카드
+    style_overlay("cartoon", "t", "펭귄", (1080, 1920), tmp_path / "c.png")
+    b = np.array(Image.open(tmp_path / "c.png"))
+    assert ((b[..., 0] > 240) & (b[..., 1] > 210) & (b[..., 2] < 120)).sum() > 5000  # 노란 말풍선
+
+
+def test_cartoon_sources_use_pixabay_animation(monkeypatch):
+    from agent.production.visuals import StockPhotoSearch, StockVideoSearch
+    monkeypatch.setenv("PIXABAY_API_KEY", "k")
+    seen = []
+
+    def handler(req):
+        seen.append(dict(req.url.params))
+        return httpx.Response(200, json={"hits": []})
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    StockVideoSearch("pixabay_video_anim", http=http).search("penguin")
+    StockPhotoSearch("pixabay_illust", http=http).search("penguin")
+    assert seen[0]["video_type"] == "animation" and seen[1]["image_type"] == "illustration"
+
+
+def test_sfx_and_progress_bar(tmp_path):
+    import soundfile as sf
+    from agent.production import composer
+    p = tmp_path / "m.wav"
+    sf.write(str(p), np.zeros((44100 * 2, 2), dtype=np.float32), 44100)
+    composer.add_sfx(p, [1.0], "whoosh")
+    a, _ = sf.read(str(p))
+    assert np.abs(a[int(0.9 * 44100): int(1.2 * 44100)]).max() > 0.1 and np.abs(a[:20000]).max() == 0

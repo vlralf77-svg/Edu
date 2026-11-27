@@ -93,6 +93,7 @@ class ProductionCfg(BaseModel):
     voice_id: str = ""
     elevenlabs_model: str = "eleven_multilingual_v2"
     edge_voice: str = "ko-KR-SunHiNeural"
+    style: str = "classic"   # 화면 스타일: classic(기본) | dynamic(요즘 숏츠: 상단 제목 띠·큰 단어 자막·흔들림·효과음·진행 막대) | cartoon
     visual_sources: list[str] = Field(
         default_factory=lambda: ["commons", "pixabay_video", "pexels_video", "pixabay", "pexels"])
     commons_max_per_subject: int = 2
@@ -154,6 +155,7 @@ class KidsCfg(BaseModel):
     tone: str = "5~10살 어린이에게 말하듯 다정하고 신나는 말투"
     cta_style: str = "soft"            # soft(기본) | direct | none — 어린이 대상 구독 유도는 YouTube 품질 기준상 주의
     edge_voice: str = "ko-KR-SunHiNeural"
+    style: str = "classic"   # classic | cartoon(만화 스타일: 애니메이션 클립·일러스트·만화 필터·말풍선 자막)
     allowed_moods: list[str] = Field(default_factory=lambda: ["funny", "calm", "upbeat", "inspiring", "tech"])
 
 
@@ -172,6 +174,8 @@ class SoccerCfg(BaseModel):
     tone: str = "열정적인 스포츠 캐스터처럼 빠르고 생생한 말투"
     allowed_moods: list[str] = Field(default_factory=lambda: ["upbeat", "inspiring", "tense", "tech"])
     youtube_category: str = "17"
+    style: str = "dynamic"   # 요즘 축구 숏츠 형식
+    target_chars_ko: int = 200   # 약 35~40초 (짧고 빠르게)
 
 
 class Settings(BaseModel):
@@ -313,6 +317,8 @@ def apply_profile(settings: Settings, profile: str) -> Settings:
         s.collect.published_within_hours = c.published_within_hours
         s.collect.search_with_categories = False
         s.script.tone = c.tone
+        s.script.target_chars_ko = c.target_chars_ko
+        s.production.style = c.style
         return s
     if profile != "kids":
         return settings
@@ -331,6 +337,10 @@ def apply_profile(settings: Settings, profile: str) -> Settings:
     s.script.tone = k.tone
     s.script.cta_style = k.cta_style
     s.production.edge_voice = k.edge_voice
+    s.production.style = k.style
+    if k.style == "cartoon":  # 만화 클립·일러스트를 먼저 찾고, 없으면 실사 영상에 만화 필터
+        s.production.visual_sources = ["pixabay_video_anim", "pixabay_illust", "commons", "pixabay_video",
+                                       "pexels_video", "pixabay", "pexels"]
     return s
 
 

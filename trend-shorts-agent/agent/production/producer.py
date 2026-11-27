@@ -20,7 +20,7 @@ from .fonts import find_font, family_name
 from .subtitles import build_cues, write_ass, write_srt
 from .tts.base import TTSResult, Word, get_provider, to_wav, wav_duration
 from ..config import youtube_category
-from .visuals import VisualFetcher, cta_overlay, title_overlay
+from .visuals import VisualFetcher, cta_overlay, style_overlay, title_overlay  # noqa: F401
 
 log = logging.getLogger(__name__)
 SCENE_GAP = 0.25   # 장면 사이 숨 고르기
@@ -209,22 +209,25 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
             vis = fetcher.fetch(sc, work / f"scene_{sc['idx']:02d}", dur)
             visuals.append(vis)
             # 타이포그래피 카드는 화면 텍스트를 이미 크게 보여주므로 상단 타이틀 생략
-            title_overlay("" if vis.get("kind") == "card" else sc.get("on_screen_text", ""), size, ov,
-                          p.font_path)
+            style_overlay(p.style, script.get("title", ""), sc.get("on_screen_text", ""), size, ov, p.font_path,
+                          show_card=vis.get("kind") != "card")
             if sc is scenes[-1] and s.script.cta_style != "none":  # 마지막 장면: 구독·좋아요(또는 인사) 그래픽
                 cta_overlay(ov, s.script.cta_style, p.font_path)
             clip = work / f"clip_{sc['idx']:02d}.mp4"
-            composer.render_scene(Path(vis["path"]), ov, dur, clip, sc["idx"], size, p.fps, kind=vis["kind"])
+            composer.render_scene(Path(vis["path"]), ov, dur, clip, sc["idx"], size, p.fps, kind=vis["kind"],
+                                  style=p.style, cartoonize=p.style == "cartoon" and not vis.get("cartoon_native")
+                                  and vis.get("kind") != "card")
             clips.append(clip)
         video_only = work / "video_only.mp4"
         composer.concat_videos(clips, video_only)
         # 3) 자막
-        cues = build_cues(words, p.subtitle_max_chars)
+        from .subtitles import STYLE_SUB
+        cues = build_cues(words, min(p.subtitle_max_chars, STYLE_SUB.get(p.style, STYLE_SUB["classic"])[0]))
         write_srt(cues, out_dir / "subtitles.srt")
         ass = None
         if p.burn_subtitles:
             ass = work / "subtitles.ass"
-            write_ass(cues, ass, family_name(p.font_path), size)
+            write_ass(cues, ass, family_name(p.font_path), size, style=p.style)
         # 4) BGM
         bgm_path, bgm_meta = make_bgm(ctx, script, total, work)
         if bgm_path:
@@ -235,10 +238,13 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
         segs = composer.speech_segments([(w.start, w.end) for w in words])
         mix = work / "mix.wav"
         mix_info = composer.mix_audio(narration, bgm_path, segs, mix, total, volume, s.bgm.ducking_db)
+        if p.style in ("dynamic", "cartoon"):  # 장면 전환 효과음: 축구 '휙', 만화 '뽁'
+            composer.add_sfx(mix, starts[1:], "whoosh" if p.style == "dynamic" else "pop")
         # 5) 최종 합성
         final = out_dir / "final.mp4"
         font_file, _ = find_font(p.font_path)
-        composer.finalize(video_only, mix, final, total, ass, font_file.parent, p.fps)
+        composer.finalize(video_only, mix, final, total, ass, font_file.parent, p.fps,
+                          progress_bar=p.style == "dynamic", size=size)
         # 6) 메타
         meta = {
             "title": script.get("title", ""),
@@ -252,6 +258,7 @@ def produce_script(ctx, script_row: Script, tts=None, stock_search=None) -> Prod
             "made_for_kids": s.profile == "kids",   # 어린이용: YouTube '아동용' 표시 (COPPA)
             "category_id": youtube_category(s),
             "profile": s.profile,
+            "style": p.style,
             "script_id": script_row.id,
         }
         (out_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

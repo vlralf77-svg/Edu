@@ -110,8 +110,14 @@ if page == PAGES[0]:
     if b2.button("🧒 어린이용 영상 만들기", use_container_width=True,
                  help="동물·과학·공룡·우주 등 어린이에게 좋은 인기 영상만 모아 쉬운 말로 대본을 씁니다 (아동용으로 표시)"):
         start_job("run-daily", ["run-daily", "--kids"])
-    if b2.button("⚽ 축구 영상 만들기", use_container_width=True,
-                 help="축구 관련 인기 영상만 모아 경기 결과·기록·이적 소식 등으로 대본을 씁니다 (실제 경기 영상은 저작권 때문에 사용 안 함)"):
+    cartoon = b2.toggle("🎨 만화 스타일", value=settings.kids.style == "cartoon",
+                        help="만화·애니메이션 클립과 일러스트, 만화 필터, 말풍선 자막으로 만듭니다 (어린이용 영상 제작 시 적용)")
+    if cartoon != (settings.kids.style == "cartoon"):
+        save_local_settings({"kids": {"style": "cartoon" if cartoon else "classic"}})
+        st.rerun()
+    if b2.button("⚽ 축구 숏츠 만들기 (요즘 스타일)", use_container_width=True,
+                 help="축구 인기 영상만 모아 결과·기록·이적 소식으로 30~40초 대본 → 상단 제목 띠, 큰 단어 자막(숫자 노란 강조), "
+                      "핵심 숫자 카드, 흔들림·'휙' 효과음, 진행 막대 (실제 경기 영상은 저작권 때문에 사용 안 함)"):
         start_job("run-daily", ["run-daily", "--soccer"])
     st.caption("② 분석이 끝나면 **✅ 후보 검토** 메뉴에서 승인 → ③ 제작")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
@@ -295,6 +301,9 @@ elif page == PAGES[3]:
             rprov = st.selectbox("웹 조사 방식", list(RP), index=list(RP).index(s.research.provider)
                                  if s.research.provider in RP else 0, format_func=RP.get)
             notify_on = st.toggle("Slack/Telegram 알림 보내기", s.notify.enabled)
+            STY = {"classic": "기본 (상단 제목 + 문장 자막)", "dynamic": "요즘 숏츠 (제목 띠·큰 단어 자막·효과음·진행 막대)"}
+            gstyle = st.selectbox("일반 영상 화면 스타일", list(STY), index=list(STY).index(s.production.style)
+                                  if s.production.style in STY else 0, format_func=STY.get)
             CTA = {"direct": "구독·좋아요 요청 + 버튼 그래픽", "soft": "다정한 마무리 인사만", "none": "없음"}
             cta = st.selectbox("일반 영상 마무리", list(CTA), index=list(CTA).index(s.script.cta_style)
                                if s.script.cta_style in CTA else 0, format_func=CTA.get)
@@ -308,7 +317,7 @@ elif page == PAGES[3]:
                 "llm": {"provider": provider, "gemini_model": gmodel.strip(), "model": model}, "schedule": {"run_at": run_at.strftime("%H:%M")},
                 "review": {"require_approval": approval, "auto_produce_top_n": int(auto_n)},
                 "production": {"tts_provider": tts, "voice_id": voice.strip(), "visual_sources": vis,
-                               "edge_voice": evoice},
+                               "edge_voice": evoice, "style": gstyle},
                 "collect": {"category_ids": cats, "exclude_keywords": [x.strip() for x in excl.split(",") if x.strip()]},
                 "notify": {"enabled": notify_on},
                 "research": {"provider": rprov},
