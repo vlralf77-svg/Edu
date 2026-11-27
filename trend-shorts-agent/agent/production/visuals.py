@@ -127,10 +127,10 @@ class StockPhotoSearch(_Client):
             return [{"url": p["src"]["large2x"], "page": p["url"], "author": p.get("photographer", ""),
                      "license": "Pexels License (무료 상업적 이용)", "source": "pexels"}
                     for p in r.json().get("photos", [])]
-        if self.provider in ("pixabay", "pixabay_illust") and (key := env("PIXABAY_API_KEY")):
+        if self.provider in ("pixabay", "pixabay_illust", "pixabay_vector") and (key := env("PIXABAY_API_KEY")):
             r = self.http.get("https://pixabay.com/api/", params={
                 "key": key, "q": query, "orientation": "vertical", "safesearch": "true", "per_page": 10,
-                "image_type": "illustration" if self.provider == "pixabay_illust" else "photo"})
+                "image_type": {"pixabay_illust": "illustration", "pixabay_vector": "vector"}.get(self.provider, "photo")})
             r.raise_for_status()
             return [{"url": p["largeImageURL"], "page": p["pageURL"], "author": p.get("user", ""),
                      "license": "Pixabay Content License (무료 상업적 이용)", "source": "pixabay"}

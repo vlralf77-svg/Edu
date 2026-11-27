@@ -22,6 +22,7 @@ JOB_LABELS = {
     "setup-ffmpeg": "FFmpeg 자동 설치",
     "publish": "YouTube 업로드",
     "from-url": "기사 링크로 영상 만들기",
+    "quiz": "어린이 그림자 퀴즈 영상",
     "youtube-login": "YouTube 계정 연결",
 }
 

@@ -47,6 +47,18 @@ def run_daily(run: Optional[str] = RunOpt, force: bool = ForceOpt,
     typer.echo(f"\n후보 목록: data/runs/{d}/shortlist.md")
 
 
+@app.command()
+def quiz(theme: str = typer.Option("animals", help="animals | dinosaurs | vehicles | sea | fruits"),
+         count: int = typer.Option(10, help="문제 수 (3~10)"),
+         folder: Optional[Path] = typer.Option(None, help="내 이미지 폴더 ('정답이름.png', 권리 보유 이미지만)")):
+    """🧩 어린이 그림자 퀴즈 영상 (그림자 → 3·2·1 → 정답 공개)"""
+    from .models import Production, session_scope
+    from .quiz import make_quiz
+    pid = make_quiz(theme, count, folder)
+    p = session_scope(get_settings().db_url).get(Production, pid)
+    typer.echo(f"{p.status}: {p.video_path or p.error}")
+
+
 @app.command("from-url")
 def from_url(urls: list[str] = typer.Argument(..., help="뉴스 기사 주소 (최대 5개)"),
              profile: str = typer.Option("general", "--profile", help="general | kids | soccer")):

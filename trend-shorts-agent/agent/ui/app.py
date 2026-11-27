@@ -122,6 +122,27 @@ if page == PAGES[0]:
     st.caption("② 분석이 끝나면 **✅ 후보 검토** 메뉴에서 승인 → ③ 제작")
     if b3.button(f"③ 승인된 영상 {len(approved)}개 제작", use_container_width=True, disabled=not approved):
         start_job("produce", ["produce", "--approved"])
+    st.subheader("🧩 어린이 그림자 퀴즈")
+    from agent.quiz import THEMES
+    qc1, qc2, qc3 = st.columns([2, 2, 2])
+    qtheme = qc1.selectbox("주제", list(THEMES), format_func=lambda k: THEMES[k][0])
+    qcount = qc2.slider("문제 수", 5, 10, 10)
+    if qc3.button("🧩 퀴즈 영상 만들기", type="primary", use_container_width=True,
+                  help="그림자(문제) → 3·2·1 → 컬러 사진과 정답 공개. 바로 영상까지 만들어 🎬 만든 영상에 올라갑니다"):
+        start_job("quiz", ["quiz", "--theme", qtheme, "--count", str(qcount)])
+    with st.expander("🖼️ 내 캐릭터 이미지로 퀴즈 만들기"):
+        st.caption("파일 이름이 정답이 됩니다 (예: 01_냥냥이.png → '냥냥이'). 배경이 투명하거나 흰색이면 그림자로, "
+                   "아니면 모자이크로 가려집니다. ⚠️ 인기 캐릭터(티니핑·뽀로로·포켓몬 등) 이미지는 저작권·상표가 있어 "
+                   "허락 없이 쓰면 영상 삭제·채널 경고를 받을 수 있습니다.")
+        ups = st.file_uploader("캐릭터 이미지 (3~10개)", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=True)
+        own = st.checkbox("직접 만들었거나 사용 허락을 받은 이미지입니다")
+        if st.button("내 이미지로 퀴즈 영상 만들기", disabled=not (ups and own and len(ups) >= 3)):
+            folder = settings.data_dir / "quiz_uploads" / time.strftime("%Y%m%d-%H%M%S")
+            folder.mkdir(parents=True, exist_ok=True)
+            for u in ups[:10]:
+                (folder / Path(u.name).name).write_bytes(u.getvalue())
+            start_job("quiz", ["quiz", "--folder", str(folder), "--count", str(min(len(ups), 10))])
+
     st.subheader("📰 기사 링크로 만들기")
     with st.form("from_url"):
         urls_txt = st.text_area("뉴스 기사 주소 (한 줄에 하나, 최대 5개)", height=100,
