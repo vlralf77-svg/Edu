@@ -119,7 +119,7 @@ def test_job_runner_runs_cli_in_background(tmp_path):
             break
         time.sleep(0.1)
     assert jobs.current().returncode == 0
-    assert "Usage" in jobs.tail(job.log)
+    assert "Usage" in jobs.tail(job.log, 500)
     assert jobs.last(tmp_path).name == "doctor"
 
 
